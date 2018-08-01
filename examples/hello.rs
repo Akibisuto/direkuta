@@ -10,6 +10,5 @@ fn main() {
                 res.set_body(String::from("Hello World!"));
                 res
             });
-        })
-        .run("0.0.0.0:3000");
+        }).run("0.0.0.0:3000");
 }

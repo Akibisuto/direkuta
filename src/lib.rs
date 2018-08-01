@@ -14,9 +14,9 @@ use std::sync::Arc;
 
 use futures::{future, Future};
 use http::{request, response};
-pub use hyper::StatusCode;
 pub use hyper::header::{self, HeaderMap, HeaderValue};
 use hyper::service::{NewService, Service};
+pub use hyper::StatusCode;
 use hyper::{rt, Body, Method, Server, Uri, Version};
 use regex::Regex;
 use serde::Serialize;
@@ -92,7 +92,7 @@ impl Direkuta {
     /// # Examples
     /// ```
     /// use direkuta::*;
-    /// 
+    ///
     /// Direkuta::new()
     ///     .route(|r| {
     ///         ...
@@ -181,11 +181,7 @@ impl Service for Direkuta {
         let _ = self.middle.iter().map(|(_, m)| m.before(&req));
 
         let res: Response = match self.routes.recognize(&method, &path) {
-            Ok((handler, cap)) => handler(
-                &req,
-                &self.state.clone(),
-                &cap,
-            ),
+            Ok((handler, cap)) => handler(&req, &self.state.clone(), &cap),
             Err(code) => {
                 let mut res = Response::new();
                 res.set_status(code.as_u16());
@@ -386,6 +382,92 @@ impl RouteBuilder {
         handler: H,
     ) -> &Self {
         self.route(Method::OPTIONS, pattern, handler)
+    }
+
+    pub fn path<S: AsRef<str>, H: Fn(&mut RoutePathBuilder) + Send + Sync + 'static>(
+        &mut self,
+        pattern: S,
+        handler: H,
+    ) -> &Self {
+        let pattern = normalize_pattern(pattern.as_ref());
+        let pattern = Regex::new(&pattern).expect("Pattern does not contain valid regex");
+
+        let mut builder = RoutePathBuilder {
+            pattern: pattern,
+            routes: HashMap::new(),
+        };
+
+        handler(&mut builder);
+
+        &self.routes.extend(builder.finish());
+
+        self
+    }
+}
+
+pub struct RoutePathBuilder {
+    pattern: Regex,
+    routes: HashMap<Method, Vec<Route>>,
+}
+
+impl RoutePathBuilder {
+    fn route<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+        &mut self,
+        method: Method,
+        handler: H,
+    ) -> &Self {
+        let handler = Box::new(handler);
+        self.routes.entry(method).or_insert(Vec::new()).push(Route {
+            handler,
+            pattern: self.pattern.clone(),
+        });
+        self
+    }
+
+    fn finish(self) -> HashMap<Method, Vec<Route>> {
+        self.routes
+    }
+
+    pub fn get<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+        &mut self,
+        handler: H,
+    ) -> &Self {
+        self.route(Method::GET, handler)
+    }
+
+    pub fn post<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+        &mut self,
+        handler: H,
+    ) -> &Self {
+        self.route(Method::POST, handler)
+    }
+
+    pub fn put<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+        &mut self,
+        handler: H,
+    ) -> &Self {
+        self.route(Method::PUT, handler)
+    }
+
+    pub fn delete<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+        &mut self,
+        handler: H,
+    ) -> &Self {
+        self.route(Method::DELETE, handler)
+    }
+
+    pub fn head<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+        &mut self,
+        handler: H,
+    ) -> &Self {
+        self.route(Method::HEAD, handler)
+    }
+
+    pub fn options<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+        &mut self,
+        handler: H,
+    ) -> &Self {
+        self.route(Method::OPTIONS, handler)
     }
 }
 
@@ -645,4 +727,3 @@ impl<T: Serialize + Send + Sync> Default for Wrapper<T> {
         }
     }
 }
-

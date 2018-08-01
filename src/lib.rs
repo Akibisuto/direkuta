@@ -22,8 +22,7 @@ use regex::Regex;
 use serde::Serialize;
 
 pub struct Direkuta {
-    // TODO: Rename to state?
-    context: Arc<Context>,
+    state: Arc<State>,
     /// Stores middleware, to be later used in `Service::call(...)`.
     middle: Arc<HashMap<TypeId, Box<Herupa + Send + Sync + 'static>>>,
     routes: Arc<RouteRecognizer>,
@@ -31,11 +30,11 @@ pub struct Direkuta {
 
 impl Direkuta {
     /// Constructs a new `Direkuta`
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use direkuta::Direkuta;
-    /// 
+    ///
     /// let dire = Direkuta::new();
     /// ```
     pub fn new() -> Self {
@@ -43,36 +42,36 @@ impl Direkuta {
     }
 
     /// Insert a state into `Direkuta`
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use direkuta::Direkuta;
-    /// 
+    ///
     /// let dire = Direkuta::new();
     /// ```
-    /// 
+    ///
     /// # Panics
     /// Do not use this from anywhere else but the main constructor.
     /// Using this from any else will cause tread panic.
     pub fn state<T: Any + Send + Sync + 'static>(mut self, state: T) -> Self {
-        Arc::get_mut(&mut self.context)
+        Arc::get_mut(&mut self.state)
             .expect("Cannot get_mut on state")
             .set(state);
         self
     }
 
     /// Insert a middleware into `Direkuta`
-    /// 
+    ///
     /// Middleware is anything that impliments the trait `Herupa`.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use direkuta::{Direkuta, Logger};
-    /// 
+    ///
     /// let dire = Direkuta::new()
     ///     .middle(Logger::new());
     /// ```
-    /// 
+    ///
     /// # Panics
     /// Do not use this from anywhere else but the main constructor.
     /// Using this from any else will cause tread panic.
@@ -95,11 +94,11 @@ impl Direkuta {
     }
 
     /// Run `Direkuta` as a Hyper server.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use direkuta::Direkuta;
-    /// 
+    ///
     /// let dire = Direkuta::new()
     ///     .route(|r| {
     ///         r.get("/", |c| {
@@ -107,12 +106,11 @@ impl Direkuta {
     ///     })
     ///     .run("0.0.0.0:8001");
     /// ```
-    /// 
+    ///
     /// # Errors
     /// If any errors come from the server they will be printed to the console.
     pub fn run(self, address: &str) {
-        let address = address.parse()
-            .expect("Address not a valid socket address");
+        let address = address.parse().expect("Address not a valid socket address");
         let server = Server::bind(&address)
             .serve(self)
             .map_err(|e| eprintln!("server error: {}", e));
@@ -124,7 +122,7 @@ impl Direkuta {
 impl Default for Direkuta {
     fn default() -> Self {
         Self {
-            context: Arc::new(Context::new()),
+            state: Arc::new(State::new()),
             middle: Arc::new(HashMap::new()),
             routes: Arc::new(RouteRecognizer {
                 routes: HashMap::new(),
@@ -143,7 +141,7 @@ impl NewService for Direkuta {
 
     fn new_service(&self) -> Self::Future {
         Box::new(future::ok(Self {
-            context: self.context.clone(),
+            state: self.state.clone(),
             middle: self.middle.clone(),
             routes: self.routes.clone(),
         }))
@@ -162,12 +160,12 @@ impl Service for Direkuta {
         let (parts, body) = req.into_parts();
         let req = Request::new(body, parts);
 
+        for (_, before) in self.middle.iter() {
+            before.before(&req);
+        }
+
         let res: Response = match self.routes.recognize(&method, &path) {
-            Ok((handler, cap)) => handler(
-                &req,
-                &self.context.clone(),
-                &cap,
-            ),
+            Ok((handler, cap)) => handler(&req, &self.state.clone(), &cap),
             Err(code) => {
                 let mut res = Response::new();
                 res.set_status(code.as_u16());
@@ -175,46 +173,50 @@ impl Service for Direkuta {
             }
         };
 
+        for (_, after) in self.middle.iter() {
+            after.after(&req, &res);
+        }
+
         Box::new(future::ok(res.into_hyper()))
     }
 }
 
 /// All middleware must implement this trait.
-/// 
+///
 /// # Examples
 /// ```
 /// use direkuta::Herupa;
-/// 
+///
 /// struct Logger {}
-/// 
+///
 /// impl Logger {
 ///     pub fn new() -> Self {
 ///         Self { }
 ///     }
 /// }
-/// 
+///
 /// impl Herupa for Logger {
-///     fn before(&self, req: &mut Request) {
+///     fn before(&self, req: &Request) {
 ///         println!("[{}] `{}`", req.method(), req.uri());
 ///     }
-/// 
-///     fn after(&self, req: &mut Request, res: &mut Response) {
+///
+///     fn after(&self, req: &Request, res: & Response) {
 ///         println!("[{}] `{}`", res.status(), req.uri());
 ///     }
 /// }
 pub trait Herupa {
     /// Called before a request is sent through `RouteRecognizer`
-    fn before(&self, &mut Request);
+    fn before(&self, &Request);
     /// Called after a request is sent through `RouteRecognizer`
-    fn after(&self, &mut Request, &mut Response);
+    fn after(&self, &Request, &Response);
 }
 
 /// A simple logger middleware.
-/// 
+///
 /// # Examples
 /// ```
 /// use direkuta::{Direkuta, Logger};
-/// 
+///
 /// let dire = Direkuta::new()
 ///     .middle(Logger::new());
 /// ```
@@ -223,28 +225,28 @@ pub struct Logger {}
 impl Logger {
     /// Constructs a new `Logger`
     pub fn new() -> Self {
-        Self { }
+        Self {}
     }
 }
 
 impl Herupa for Logger {
-    fn before(&self, req: &mut Request) {
+    fn before(&self, req: &Request) {
         println!("[{}] `{}`", req.method(), req.uri());
     }
 
-    fn after(&self, req: &mut Request, res: &mut Response) {
+    fn after(&self, req: &Request, res: &Response) {
         println!("[{}] `{}`", res.status(), req.uri());
     }
 }
 
-pub struct Context {
+pub struct State {
     inner: HashMap<TypeId, Box<Any + Send + Sync + 'static>>,
 }
 
-impl Context {
-    /// Constructs a new `Context`
+impl State {
+    /// Constructs a new `State`
     pub fn new() -> Self {
-        Self {
+        State {
             inner: HashMap::new(),
         }
     }
@@ -260,12 +262,12 @@ impl Context {
     }
 
     pub fn get<T: Any + Send + Sync + 'static>(&self) -> &T {
-        self.try_get::<T>().expect("Key not found is context")
+        self.try_get::<T>().expect("Key not found in state")
     }
 }
 
 pub struct Route {
-    handler: Box<Fn(&Request, &Context, &Captures) -> Response + Send + Sync + 'static>,
+    handler: Box<Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>,
     pattern: Regex,
 }
 
@@ -274,7 +276,10 @@ pub struct RouteBuilder {
 }
 
 impl RouteBuilder {
-    fn route<S: AsRef<str>, H: Fn(&Request, &Context, &Captures) -> Response + Send + Sync + 'static>(
+    fn route<
+        S: AsRef<str>,
+        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
         method: Method,
         pattern: S,
@@ -296,7 +301,10 @@ impl RouteBuilder {
         }
     }
 
-    pub fn get<S: AsRef<str>, H: Fn(&Request, &Context, &Captures) -> Response + Send + Sync + 'static>(
+    pub fn get<
+        S: AsRef<str>,
+        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
         pattern: S,
         handler: H,
@@ -304,7 +312,10 @@ impl RouteBuilder {
         self.route(Method::GET, pattern, handler)
     }
 
-    pub fn post<S: AsRef<str>, H: Fn(&Request, &Context, &Captures) -> Response + Send + Sync + 'static>(
+    pub fn post<
+        S: AsRef<str>,
+        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
         pattern: S,
         handler: H,
@@ -312,7 +323,10 @@ impl RouteBuilder {
         self.route(Method::POST, pattern, handler)
     }
 
-    pub fn put<S: AsRef<str>, H: Fn(&Request, &Context, &Captures) -> Response + Send + Sync + 'static>(
+    pub fn put<
+        S: AsRef<str>,
+        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
         pattern: S,
         handler: H,
@@ -320,7 +334,10 @@ impl RouteBuilder {
         self.route(Method::PUT, pattern, handler)
     }
 
-    pub fn delete<S: AsRef<str>, H: Fn(&Request, &Context, &Captures) -> Response + Send + Sync + 'static>(
+    pub fn delete<
+        S: AsRef<str>,
+        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
         pattern: S,
         handler: H,
@@ -328,7 +345,10 @@ impl RouteBuilder {
         self.route(Method::DELETE, pattern, handler)
     }
 
-    pub fn head<S: AsRef<str>, H: Fn(&Request, &Context, &Captures) -> Response + Send + Sync + 'static>(
+    pub fn head<
+        S: AsRef<str>,
+        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
         pattern: S,
         handler: H,
@@ -336,7 +356,10 @@ impl RouteBuilder {
         self.route(Method::HEAD, pattern, handler)
     }
 
-    pub fn options<S: AsRef<str>, H: Fn(&Request, &Context, &Captures) -> Response + Send + Sync + 'static>(
+    pub fn options<
+        S: AsRef<str>,
+        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
         pattern: S,
         handler: H,
@@ -358,7 +381,7 @@ impl RouteRecognizer {
         path: &str,
     ) -> Result<
         (
-            &(Fn(&Request, &Context, &Captures) -> Response + Send + Sync + 'static),
+            &(Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static),
             Captures,
         ),
         StatusCode,
@@ -435,8 +458,8 @@ impl Response {
     }
 
     pub fn set_status(&mut self, status: u16) {
-        self.parts.status = StatusCode::from_u16(status)
-            .expect("Given status is not a valid status code");
+        self.parts.status =
+            StatusCode::from_u16(status).expect("Given status is not a valid status code");
     }
 
     pub fn with_status(mut self, status: u16) -> Self {
@@ -452,7 +475,8 @@ impl Response {
         let body = body.into();
         self.headers_mut().insert(
             header::CONTENT_LENGTH,
-            HeaderValue::from_str(&body.len().to_string()).expect("Given value for CONTENT_LENGTH is not valid"),
+            HeaderValue::from_str(&body.len().to_string())
+                .expect("Given value for CONTENT_LENGTH is not valid"),
         );
         self.body = Body::from(body);
     }
@@ -470,7 +494,7 @@ impl Response {
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/json"),
         );
-        
+
         let mut wrapper: Wrapper<()> = Wrapper::new();
         wrapper.set_code(self.parts.status.as_u16());
         wrapper.set_status(&self.parts.status.as_str());
@@ -479,8 +503,7 @@ impl Response {
             wrapper.add_message(message);
         }
 
-        let json = serde_json::to_string(&wrapper)
-            .expect("Can not transform strcut into json");
+        let json = serde_json::to_string(&wrapper).expect("Can not transform strcut into json");
         self.set_body(json);
     }
 
@@ -489,14 +512,13 @@ impl Response {
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/json"),
         );
-    
+
         let mut wrapper: Wrapper<J> = Wrapper::new();
         wrapper.set_code(self.parts.status.as_u16());
         wrapper.set_status(&self.parts.status.as_str());
         wrapper.set_result(json);
 
-        let json = serde_json::to_string(&wrapper)
-            .expect("Can not transform strcut into json");
+        let json = serde_json::to_string(&wrapper).expect("Can not transform strcut into json");
         self.set_body(json);
     }
 
@@ -508,10 +530,7 @@ impl Response {
 impl Default for Response {
     fn default() -> Response {
         let (parts, body) = hyper::Response::new(Body::empty()).into_parts();
-        Response {
-            body,
-            parts,
-        }
+        Response { body, parts }
     }
 }
 

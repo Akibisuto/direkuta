@@ -21,10 +21,13 @@ use hyper::{rt, Body, Method, Server, Uri, Version};
 use regex::Regex;
 use serde::Serialize;
 
+/// The Direkuta web server itself.
 pub struct Direkuta {
+    /// Store state as its own type.
     state: Arc<State>,
     /// Stores middleware, to be later used in `Service::call(...)`.
     middle: Arc<HashMap<TypeId, Box<Herupa + Send + Sync + 'static>>>,
+    /// The router, it know where a url is meant to go.
     routes: Arc<RouteRecognizer>,
 }
 
@@ -47,7 +50,8 @@ impl Direkuta {
     /// ```
     /// use direkuta::Direkuta;
     ///
-    /// let dire = Direkuta::new();
+    /// Direkuta::new()
+    ///     ...
     /// ```
     ///
     /// # Panics
@@ -66,10 +70,11 @@ impl Direkuta {
     ///
     /// # Examples
     /// ```
-    /// use direkuta::{Direkuta, Logger};
+    /// use direkuta::*;
     ///
-    /// let dire = Direkuta::new()
-    ///     .middle(Logger::new());
+    /// Direkuta::new()
+    ///     .middle(Logger::new())
+    ///     ...
     /// ```
     ///
     /// # Panics
@@ -82,6 +87,18 @@ impl Direkuta {
         self
     }
 
+    /// Create new router as a closure
+    ///
+    /// # Examples
+    /// ```
+    /// use direkuta::*;
+    /// 
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         ...
+    ///     })
+    ///     ...
+    /// ```
     pub fn route<R: Fn(&mut RouteBuilder) + Send + Sync + 'static>(mut self, route: R) -> Self {
         let mut route_builder = RouteBuilder {
             routes: HashMap::new(),
@@ -99,7 +116,7 @@ impl Direkuta {
     /// ```
     /// use direkuta::Direkuta;
     ///
-    /// let dire = Direkuta::new()
+    /// Direkuta::new()
     ///     .route(|r| {
     ///         r.get("/", |c| {
     ///         });
@@ -241,6 +258,9 @@ impl Herupa for Logger {
     }
 }
 
+/// A wrapper around HashMap<TypeId, Any>, used to store Direkuta state.
+///
+/// Stored state cannot be dynamically create and must be static.
 pub struct State {
     inner: HashMap<TypeId, Box<Any + Send + Sync + 'static>>,
 }
@@ -370,6 +390,7 @@ impl RouteBuilder {
     }
 }
 
+/// A type wrapper for ease of use Captures
 type Captures = Vec<(Option<String>, String)>;
 
 pub struct RouteRecognizer {

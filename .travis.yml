@@ -1,0 +1,14 @@
+language: rust
+
+dist: trusty
+
+matrix:
+  include:
+  - rust: stable
+  - rust: nightly
+
+cache:
+  apt: true
+
+script:
+- cargo build

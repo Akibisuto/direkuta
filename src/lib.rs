@@ -109,11 +109,13 @@ impl Direkuta {
     ///
     /// # Errors
     /// If any errors come from the server they will be printed to the console.
-    pub fn run(self, address: &str) {
-        let address = address.parse().expect("Address not a valid socket address");
+    pub fn run(self, addr: &str) {
+        let address = addr.parse().expect("Address not a valid socket address");
         let server = Server::bind(&address)
             .serve(self)
             .map_err(|e| eprintln!("server error: {}", e));
+
+        println!("Direkuta listening on http://{}", addr);
 
         rt::run(server);
     }

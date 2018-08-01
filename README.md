@@ -2,11 +2,12 @@
 
 Direkuta is a REST focused web framework for Rust. It is wrapped over top of Hyper and includes state, middleware, and routing (with parameters!).
 
+**!!!Please note that Direkuta is not yet production ready, but can still be used!!!**
+
+*Direkuta's api could change, but I wouldn't expect much to (at most the router with change).*
+
 ## Examples
 Below is a simple "Hello World!" example, this was used to test benchmarks.
-
-**!!!Please note that Direkuta is not yet production ready, but can still be used!!!**
-*Direkuta's api could change, but I wouldn't expect much to (at most the router with change).*
 
 ```rust
 extern crate direkuta;

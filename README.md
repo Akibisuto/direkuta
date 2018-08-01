@@ -4,7 +4,7 @@ Direkuta is a REST focused web framework for Rust. It is wrapped over top of Hyp
 
 **!!!Please note that Direkuta is not yet production ready, but can still be used!!!**
 
-*Direkuta's api could change, but I wouldn't expect much to (at most the router with change).*
+*Direkuta's api could change, but I wouldn't expect much to (at most the router will change).*
 
 ## Examples
 Below is a simple "Hello World!" example, this was used to test benchmarks.

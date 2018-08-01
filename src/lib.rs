@@ -162,12 +162,14 @@ impl Service for Direkuta {
         let (parts, body) = req.into_parts();
         let req = Request::new(body, parts);
 
-        for (_, before) in self.middle.iter() {
-            before.before(&req);
-        }
+        let _ = self.middle.iter().map(|(_, m)| m.before(&req));
 
         let res: Response = match self.routes.recognize(&method, &path) {
-            Ok((handler, cap)) => handler(&req, &self.state.clone(), &cap),
+            Ok((handler, cap)) => handler(
+                &req,
+                &self.state.clone(),
+                &cap,
+            ),
             Err(code) => {
                 let mut res = Response::new();
                 res.set_status(code.as_u16());
@@ -175,9 +177,7 @@ impl Service for Direkuta {
             }
         };
 
-        for (_, after) in self.middle.iter() {
-            after.after(&req, &res);
-        }
+        let _ = self.middle.iter().map(|(_, m)| m.after(&req, &res));
 
         Box::new(future::ok(res.into_hyper()))
     }

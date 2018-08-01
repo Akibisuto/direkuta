@@ -20,6 +20,9 @@ include = [
   "src/**/*"
 ]
 
+[badges]
+gitlab = { repository = "akibisuto/direkuta", branch = "master" }
+
 [dependencies]
 futures = "0.1"
 http = "0.1"

@@ -16,8 +16,8 @@ use futures::{future, Future};
 use http::{request, response};
 pub use hyper::header::{self, HeaderMap, HeaderValue};
 use hyper::service::{NewService, Service};
-pub use hyper::StatusCode;
-use hyper::{rt, Body, Method, Server, Uri, Version};
+pub use hyper::{Body, StatusCode};
+use hyper::{rt, Method, Server, Uri, Version};
 use regex::Regex;
 use serde::Serialize;
 
@@ -178,7 +178,9 @@ impl Service for Direkuta {
         let (parts, body) = req.into_parts();
         let req = Request::new(body, parts);
 
-        let _ = self.middle.iter().map(|(_, m)| m.before(&req));
+        for (_, before) in self.middle.iter() {
+            before.before(&req);
+        }
 
         let res: Response = match self.routes.recognize(&method, &path) {
             Ok((handler, cap)) => handler(&req, &self.state.clone(), &cap),
@@ -189,7 +191,9 @@ impl Service for Direkuta {
             }
         };
 
-        let _ = self.middle.iter().map(|(_, m)| m.after(&req, &res));
+        for (_, after) in self.middle.iter() {
+            after.after(&req, &res);
+        }
 
         Box::new(future::ok(res.into_hyper()))
     }
@@ -617,11 +621,9 @@ impl Response {
 
     /// Wrapper around `Request.set_body` for the HTML context type.
     pub fn html(&mut self, html: &str) {
-        self.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("text/html"),
-        );
-        
+        self.headers_mut()
+            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
+
         self.set_body(html);
     }
 
@@ -631,12 +633,12 @@ impl Response {
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/javascript"),
         );
-        
+
         self.set_body(js);
     }
 
     /// Wrapper around `Request.set_body` for the JSON context type.
-    pub fn json<J: Serialize + Send + Sync + 'static>(&mut self, json: J) {
+    pub fn json<J: Serialize + Send + Sync>(&mut self, json: J) {
         self.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/json"),

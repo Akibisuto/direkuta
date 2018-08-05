@@ -575,6 +575,10 @@ impl Response {
         self.body
     }
 
+    pub fn body_mut(&mut self) -> &mut Body {
+        &mut self.body
+    }
+
     pub fn set_body<T: Into<String>>(&mut self, body: T) {
         let body = body.into();
         self.headers_mut().insert(
@@ -611,6 +615,27 @@ impl Response {
         self.set_body(json);
     }
 
+    /// Wrapper around `Request.set_body` for the HTML context type.
+    pub fn html(&mut self, html: &str) {
+        self.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/html"),
+        );
+        
+        self.set_body(html);
+    }
+
+    /// Wrapper around `Request.set_body` for the JS context type.
+    pub fn js(&mut self, js: &str) {
+        self.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/javascript"),
+        );
+        
+        self.set_body(js);
+    }
+
+    /// Wrapper around `Request.set_body` for the JSON context type.
     pub fn json<J: Serialize + Send + Sync + 'static>(&mut self, json: J) {
         self.headers_mut().insert(
             header::CONTENT_TYPE,

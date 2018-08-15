@@ -7,7 +7,7 @@ fn main() {
         .route(|r| {
             r.get("/", |_, _, _| {
                 let mut res = Response::new();
-                res.set_body(String::from("Hello World!"));
+                res.set_body("Hello World!");
                 res
             });
         }).run("0.0.0.0:3000");

@@ -933,7 +933,7 @@ impl Response {
     }
 
     /// Wrapper around `Request.set_body` for the HTML context type.
-    pub fn html(&mut self, html: &str) {
+    pub fn html<T: Into<String>>(&mut self, html: T) {
         let _ = self
             .headers_mut()
             .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
@@ -942,7 +942,7 @@ impl Response {
     }
 
     /// Wrapper around `Request.set_body` for the JS context type.
-    pub fn js(&mut self, js: &str) {
+    pub fn js<T: Into<String>>(&mut self, js: T) {
         let _ = self.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/javascript"),
@@ -952,13 +952,7 @@ impl Response {
     }
 
     /// Wrapper around `Request.set_body` for the JSON context type.
-    pub fn json<
-        T: Serialize + Send + Sync,
-        F: Fn(&mut JsonBuilder<T>),
-    >(
-        &mut self,
-        json: F,
-    ) {
+    pub fn json<T: Serialize + Send + Sync, F: Fn(&mut JsonBuilder<T>)>(&mut self, json: F) {
         let mut builder = JsonBuilder::new::<T>();
 
         let _ = self.headers_mut().insert(
@@ -972,7 +966,7 @@ impl Response {
     }
 
     /// Transform the Response intot a Hyper Response.
-    pub fn into_hyper(self) -> hyper::Response<Body> {
+    fn into_hyper(self) -> hyper::Response<Body> {
         hyper::Response::from_parts(self.parts, self.body)
     }
 }
@@ -984,8 +978,8 @@ impl Default for Response {
     }
 }
 
-/// JsonBuilder is a builder for Json responses.
-/// 
+/// A builder for Json responses.
+///
 /// Do not directly use
 pub struct JsonBuilder<T: Serialize + Send + Sync> {
     /// Json response wrapper to be sent.
@@ -1018,14 +1012,14 @@ impl<T: Serialize + Send + Sync> JsonBuilder<T> {
     }
 
     /// Set the status code of the Json response.
-    /// 
+    ///
     /// This can be gotten with `StatusCode.as_u16`.
     pub fn set_code(&mut self, status: u16) {
         self.wrapper.set_code(status);
     }
 
     /// Set the status string of the Json response.
-    /// 
+    ///
     /// This can be gotten with `StatusCode.as_str`.
     pub fn set_status(&mut self, status: &str) {
         self.wrapper.set_status(status);

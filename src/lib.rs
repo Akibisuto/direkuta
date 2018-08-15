@@ -1,3 +1,25 @@
+//! A web framework built around Hyper.
+//! 
+//! # Examples
+//! ```
+//! Direkuta::new()
+//!     .route(|r| {
+//!         r.get("/", |_, _, _| {
+//!             let mut res = Response::new();
+//!             res.set_body(String::from("Hello World!"));
+//!             res
+//!         });
+//!     })
+//!     .run("0.0.0.0:3000");
+//! ```
+
+#![deny(
+    missing_docs,
+    trivial_casts, trivial_numeric_casts,
+    unsafe_code, unstable_features,
+    unused_import_braces, unused_qualifications
+)]
+
 extern crate futures;
 extern crate http;
 extern crate hyper;
@@ -142,8 +164,19 @@ impl Direkuta {
 
 impl Default for Direkuta {
     fn default() -> Self {
+        let mut state = State::new();
+
+        #[cfg(feature = "template")]
+        state.set(match tera::Tera::parse("templates/**/*") {
+            Ok(t) => t,
+            Err(e) => {
+                println!("Parsing error(s): {}", e);
+                ::std::process::exit(1);
+            }
+        });
+
         Self {
-            state: Arc::new(State::new()),
+            state: Arc::new(state),
             middle: Arc::new(HashMap::new()),
             routes: Arc::new(RouteRecognizer {
                 routes: HashMap::new(),
@@ -241,6 +274,7 @@ pub trait Herupa {
 /// let dire = Direkuta::new()
 ///     .middle(Logger::new());
 /// ```
+#[derive(Clone, Copy, Debug)]
 pub struct Logger {}
 
 impl Logger {
@@ -263,6 +297,7 @@ impl Herupa for Logger {
 /// A wrapper around HashMap<TypeId, Any>, used to store Direkuta state.
 ///
 /// Stored state cannot be dynamically create and must be static.
+#[derive(Debug)]
 pub struct State {
     inner: HashMap<TypeId, Box<Any + Send + Sync + 'static>>,
 }
@@ -346,11 +381,15 @@ impl Default for State {
     }
 }
 
-pub struct Route {
+struct Route {
     handler: Box<Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>,
     pattern: Regex,
 }
 
+/// Route builder.
+/// 
+/// This is not to be used directly,
+/// its only used for `Direkuta.route`.
 pub struct RouteBuilder {
     routes: HashMap<Method, Vec<Route>>,
 }
@@ -381,6 +420,20 @@ impl RouteBuilder {
         }
     }
 
+    /// Adds a `Method::GET` request handler.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.get("/", |_, _, _| {
+    ///     let mut res = Response::new();
+    ///     res.set_body(String::from("Hello World!"));
+    ///     res
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn get<
         S: AsRef<str>,
         H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
@@ -392,6 +445,20 @@ impl RouteBuilder {
         self.route(Method::GET, pattern, handler)
     }
 
+    /// Adds a `Method::POST` request handler.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.post("/", |_, _, _| {
+    ///     let mut res = Response::new();
+    ///     res.set_body(String::from("Hello World!"));
+    ///     res
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn post<
         S: AsRef<str>,
         H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
@@ -403,6 +470,20 @@ impl RouteBuilder {
         self.route(Method::POST, pattern, handler)
     }
 
+    /// Adds a `Method::PUT` request handler.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.put("/", |_, _, _| {
+    ///     let mut res = Response::new();
+    ///     res.set_body(String::from("Hello World!"));
+    ///     res
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn put<
         S: AsRef<str>,
         H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
@@ -414,6 +495,20 @@ impl RouteBuilder {
         self.route(Method::PUT, pattern, handler)
     }
 
+    /// Adds a `Method::DELETE` request handler.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.delete("/", |_, _, _| {
+    ///     let mut res = Response::new();
+    ///     res.set_body(String::from("Hello World!"));
+    ///     res
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn delete<
         S: AsRef<str>,
         H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
@@ -425,6 +520,20 @@ impl RouteBuilder {
         self.route(Method::DELETE, pattern, handler)
     }
 
+    /// Adds a `Method::HEAD` request handler.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.head("/", |_, _, _| {
+    ///     let mut res = Response::new();
+    ///     res.set_body(String::from("Hello World!"));
+    ///     res
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn head<
         S: AsRef<str>,
         H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
@@ -436,6 +545,20 @@ impl RouteBuilder {
         self.route(Method::HEAD, pattern, handler)
     }
 
+    /// Adds a `Method::OPTIONS` request handler.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.options("/", |_, _, _| {
+    ///     let mut res = Response::new();
+    ///     res.set_body(String::from("Hello World!"));
+    ///     res
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn options<
         S: AsRef<str>,
         H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
@@ -447,6 +570,22 @@ impl RouteBuilder {
         self.route(Method::OPTIONS, pattern, handler)
     }
 
+    /// Create a path for multiple request types.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.path("/", |r| {
+    ///     r.get(|_, _, _| {
+    ///         let mut res = Response::new();
+    ///         res.set_body(String::from("Hello World!"));
+    ///         res
+    ///     });
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn path<S: AsRef<str>, H: Fn(&mut RoutePathBuilder) + Send + Sync + 'static>(
         &mut self,
         pattern: S,
@@ -468,6 +607,10 @@ impl RouteBuilder {
     }
 }
 
+/// Route Path builder.
+/// 
+/// This is not to be used directly,
+/// its only used for `RouteBuilder.path`.
 pub struct RoutePathBuilder {
     pattern: Regex,
     routes: HashMap<Method, Vec<Route>>,
@@ -491,6 +634,22 @@ impl RoutePathBuilder {
         self.routes
     }
 
+    /// Adds a `Method::GET` request handler.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.path("/", |r| {
+    ///     r.get(|_, _, _| {
+    ///         let mut res = Response::new();
+    ///         res.set_body(String::from("Hello World!"));
+    ///         res
+    ///     });
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn get<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
         handler: H,
@@ -498,6 +657,22 @@ impl RoutePathBuilder {
         self.route(Method::GET, handler)
     }
 
+    /// Adds a `Method::POST` request handler.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.path("/", |r| {
+    ///     r.post(|_, _, _| {
+    ///         let mut res = Response::new();
+    ///         res.set_body(String::from("Hello World!"));
+    ///         res
+    ///     });
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn post<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
         handler: H,
@@ -505,6 +680,22 @@ impl RoutePathBuilder {
         self.route(Method::POST, handler)
     }
 
+    /// Adds a `Method::PUT` request handler.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.path("/", |r| {
+    ///     r.put(|_, _, _| {
+    ///         let mut res = Response::new();
+    ///         res.set_body(String::from("Hello World!"));
+    ///         res
+    ///     });
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn put<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
         handler: H,
@@ -512,6 +703,22 @@ impl RoutePathBuilder {
         self.route(Method::PUT, handler)
     }
 
+    /// Adds a `Method::DELETE` request handler.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.path("/", |r| {
+    ///     r.delete(|_, _, _| {
+    ///         let mut res = Response::new();
+    ///         res.set_body(String::from("Hello World!"));
+    ///         res
+    ///     });
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn delete<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
         handler: H,
@@ -519,6 +726,22 @@ impl RoutePathBuilder {
         self.route(Method::DELETE, handler)
     }
 
+    /// Adds a `Method::HEAD` request handler.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.path("/", |r| {
+    ///     r.head(|_, _, _| {
+    ///         let mut res = Response::new();
+    ///         res.set_body(String::from("Hello World!"));
+    ///         res
+    ///     });
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn head<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
         handler: H,
@@ -526,6 +749,22 @@ impl RoutePathBuilder {
         self.route(Method::HEAD, handler)
     }
 
+    /// Adds a `Method::OPTIONS` request handler.
+    /// 
+    /// # Examples
+    /// ```
+    /// # Direkuta::new()
+    /// #     .route(|r| {
+    /// r.path("/", |r| {
+    ///     r.options(|_, _, _| {
+    ///         let mut res = Response::new();
+    ///         res.set_body(String::from("Hello World!"));
+    ///         res
+    ///     });
+    /// });
+    /// #     })
+    /// #     .run("0.0.0.0:3000");
+    /// ```
     pub fn options<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
         handler: H,
@@ -537,7 +776,7 @@ impl RoutePathBuilder {
 /// A type wrapper for ease of use Captures
 type Captures = Vec<(Option<String>, String)>;
 
-pub struct RouteRecognizer {
+struct RouteRecognizer {
     routes: HashMap<Method, Vec<Route>>,
 }
 
@@ -589,6 +828,8 @@ fn normalize_pattern(pattern: &str) -> Cow<str> {
     }
 }
 
+/// A wrapper around Hyper Response.
+#[derive(Debug)]
 pub struct Response {
     pub(crate) body: Body,
     pub(crate) parts: response::Parts,
@@ -596,52 +837,68 @@ pub struct Response {
 
 impl Response {
     /// Constructs a new `Response`
+    /// 
+    /// # Examples
+    /// ```
+    /// let res = Response::new();
+    /// ```
     pub fn new() -> Self {
         Response::default()
     }
 
+    /// Return Response HTTP version.
     pub fn version(&self) -> Version {
         self.parts.version
     }
 
+    /// Return Response HTTP headers.
     pub fn headers(&self) -> &HeaderMap<HeaderValue> {
         &self.parts.headers
     }
 
+    /// Return Response HTTP headers.
     pub fn headers_mut(&mut self) -> &mut HeaderMap<HeaderValue> {
         &mut self.parts.headers
     }
 
+    /// Set Response's HTTP headers.
     pub fn set_headers(&mut self, headers: HeaderMap<HeaderValue>) {
         self.parts.headers = headers;
     }
 
+    /// Return Response HTTP status code.
     pub fn status(&self) -> StatusCode {
         self.parts.status
     }
 
+    /// Get mutable reference to Response's status code.
     pub fn status_mut(&mut self) -> &mut StatusCode {
         &mut self.parts.status
     }
 
+    /// Set Response's HTTP status code.
     pub fn set_status(&mut self, status: u16) {
         self.parts.status =
             StatusCode::from_u16(status).expect("Given status is not a valid status code");
     }
 
+    /// Set Response's HTTP status code.
     pub fn with_status(mut self, status: u16) -> Self {
         self.set_status(status);
         self
     }
 
+    /// Return Response HTTP body.
     pub fn body(self) -> Body {
         self.body
     }
 
+    /// Get mutable reference to Response's body.
     pub fn body_mut(&mut self) -> &mut Body {
         &mut self.body
     }
 
+    /// Set Response's HTTP body.
     pub fn set_body<T: Into<String>>(&mut self, body: T) {
         let body = body.into();
         self.headers_mut().insert(
@@ -652,30 +909,19 @@ impl Response {
         self.body = Body::from(body);
     }
 
+    /// Set Response's HTTP body.
+    pub fn with_body<T: Into<String>>(mut self, body: T) -> Self {
+        self.set_body(body);
+        self
+    }
+
+    /// Set Response's redirect location as status code.
     pub fn redirect(mut self, url: &'static str) -> Response {
         self.set_status(301);
         self.headers_mut()
             .insert(header::LOCATION, HeaderValue::from_static(url));
 
         self
-    }
-
-    pub fn error(&mut self, messages: Vec<&str>) {
-        self.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/json"),
-        );
-
-        let mut wrapper: Wrapper<()> = Wrapper::new();
-        wrapper.set_code(self.parts.status.as_u16());
-        wrapper.set_status(&self.parts.status.as_str());
-
-        for message in messages {
-            wrapper.add_message(message);
-        }
-
-        let json = serde_json::to_string(&wrapper).expect("Can not transform strcut into json");
-        self.set_body(json);
     }
 
     /// Wrapper around `Request.set_body` for the HTML context type.
@@ -712,6 +958,26 @@ impl Response {
         self.set_body(json);
     }
 
+    /// An error happened, add a error message to be send out instead.
+    pub fn json_error(&mut self, messages: Vec<&str>) {
+        self.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/json"),
+        );
+
+        let mut wrapper: Wrapper<()> = Wrapper::new();
+        wrapper.set_code(self.parts.status.as_u16());
+        wrapper.set_status(&self.parts.status.as_str());
+
+        for message in messages {
+            wrapper.add_message(message);
+        }
+
+        let json = serde_json::to_string(&wrapper).expect("Can not transform strcut into json");
+        self.set_body(json);
+    }
+
+    /// Transform the Response intot a Hyper Response.
     pub fn into_hyper(self) -> hyper::Response<Body> {
         hyper::Response::from_parts(self.parts, self.body)
     }
@@ -724,6 +990,8 @@ impl Default for Response {
     }
 }
 
+/// A wrapped Hyper request.
+#[derive(Debug)]
 pub struct Request {
     pub(crate) body: Body,
     pub(crate) parts: request::Parts,
@@ -735,26 +1003,32 @@ impl Request {
         Self { body, parts }
     }
 
+    /// Return Request HTTP version.
     pub fn version(&self) -> Version {
         self.parts.version
     }
 
+    /// Return Request HTTP heads.
     pub fn headers(&self) -> &HeaderMap<HeaderValue> {
         &self.parts.headers
     }
 
+    /// Return Request HTTP method.
     pub fn method(&self) -> &Method {
         &self.parts.method
     }
 
+    /// Return Request uri.
     pub fn uri(&self) -> &Uri {
         &self.parts.uri
     }
 
+    /// Return Request uri path.
     pub fn path(&self) -> &str {
         self.parts.uri.path()
     }
 
+    /// Return Request body.
     pub fn body(&mut self) -> Body {
         ::std::mem::replace(&mut self.body, Body::empty())
     }
@@ -774,31 +1048,19 @@ impl<T: Serialize + Send + Sync> Wrapper<T> {
         Wrapper::default()
     }
 
-    pub fn messages(&self) -> &Vec<String> {
-        &self.messages
-    }
-
-    pub fn add_message(&mut self, message: &str) {
+    fn add_message(&mut self, message: &str) {
         self.messages.push(String::from(message));
     }
 
-    pub fn code(&self) -> &u16 {
-        &self.code
-    }
-
-    pub fn set_code(&mut self, code: u16) {
+    fn set_code(&mut self, code: u16) {
         self.code = code;
     }
 
-    pub fn status(&self) -> &String {
-        &self.status
-    }
-
-    pub fn set_status(&mut self, status: &str) {
+    fn set_status(&mut self, status: &str) {
         self.status = String::from(status);
     }
 
-    pub fn set_result(&mut self, result: T) {
+    fn set_result(&mut self, result: T) {
         self.result = Some(result);
     }
 }

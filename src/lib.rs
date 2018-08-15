@@ -7,6 +7,9 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
+#[cfg(feature = "template")]
+extern crate tera;
+
 use std::any::{Any, TypeId};
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -41,7 +44,7 @@ impl Direkuta {
     /// let dire = Direkuta::new();
     /// ```
     pub fn new() -> Self {
-        Default::default()
+        Direkuta::default()
     }
 
     /// Insert a state into `Direkuta`
@@ -266,27 +269,80 @@ pub struct State {
 
 impl State {
     /// Constructs a new `State`
+    /// 
+    /// # Examples
+    /// ```
+    /// let state = State::new();
+    /// ```
     pub fn new() -> Self {
-        State {
-            inner: HashMap::new(),
-        }
+        State::default()
     }
 
+    /// Sets the value of whatever type is passed.
+    /// 
+    /// Please not that you cannot have teo of the same types,
+    /// one will overwrite the other.
+    /// 
+    /// # Examples
+    /// ```
+    /// # let state = State::new();
+    /// state.set(String::from("Hello World!"));
+    /// ```
     pub fn set<T: Any + Send + Sync + 'static>(&mut self, ctx: T) {
         self.inner.insert(TypeId::of::<T>(), Box::new(ctx));
     }
 
+    /// Attempt to get a value based on type.
+    /// 
+    /// Use this if you are not sure if the type exists.
+    /// 
+    /// # Examples
+    /// ```
+    /// # let state = State::new();
+    /// # state.set(String::from("Hello World!"));
+    /// match state.get::<String>() {
+    ///     Some(s) => {
+    ///         println!("{}", s);
+    ///     },
+    ///     None => {
+    ///         println!("String not found in state");
+    ///     },
+    /// }
+    /// ```
     pub fn try_get<T: Any + Send + Sync + 'static>(&self) -> Option<&T> {
         self.inner
             .get(&TypeId::of::<T>())
             .and_then(|b| b.downcast_ref::<T>())
     }
 
+    /// Get a value based on type.
+    /// 
+    /// This is a wrapper around `try_get` and uses an `expect`.
+    /// 
+    /// # Examples
+    /// ```
+    /// # let state = State::new();
+    /// # state.set(String::from("Hello World!"));
+    /// println!("{}", state.get::<String>());
+    /// ```
+    /// 
+    /// # Panics
+    /// If the key does not exist the function will panic
+    /// 
+    /// If you do not know if the type exists use `try_get`.
     pub fn get<T: Any + Send + Sync + 'static>(&self) -> &T {
         self.try_get::<T>().expect(&format!(
             "Key not found in state: {:?}", 
             &TypeId::of::<T>()
         ))
+    }
+}
+
+impl Default for State {
+    fn default() -> State {
+        State {
+            inner: HashMap::new(),
+        }
     }
 }
 

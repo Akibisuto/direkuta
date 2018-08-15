@@ -15,12 +15,15 @@
 
 #![deny(
     missing_docs,
+    single_use_lifetimes,
     trivial_casts,
     trivial_numeric_casts,
     unsafe_code,
     unstable_features,
     unused_import_braces,
-    unused_qualifications
+    unused_qualifications,
+    unreachable_pub,
+    unused_results
 )]
 
 extern crate futures;
@@ -109,7 +112,7 @@ impl Direkuta {
     /// Do not use this from anywhere else but the main constructor.
     /// Using this from any else will cause tread panic.
     pub fn middle<T: Herupa + Send + Sync + 'static>(mut self, middle: T) -> Self {
-        Arc::get_mut(&mut self.middle)
+        let _ = Arc::get_mut(&mut self.middle)
             .expect("Cannot get_mut on middle")
             .insert(TypeId::of::<T>(), Box::new(middle));
         self
@@ -327,7 +330,7 @@ impl State {
     /// state.set(String::from("Hello World!"));
     /// ```
     pub fn set<T: Any + Send + Sync + 'static>(&mut self, ctx: T) {
-        self.inner.insert(TypeId::of::<T>(), Box::new(ctx));
+        let _ = self.inner.insert(TypeId::of::<T>(), Box::new(ctx));
     }
 
     /// Attempt to get a value based on type.
@@ -602,7 +605,7 @@ impl RouteBuilder {
 
         handler(&mut builder);
 
-        &self.routes.extend(builder.finish());
+        let _ = &self.routes.extend(builder.finish());
 
         self
     }
@@ -902,7 +905,7 @@ impl Response {
     /// Set Response's HTTP body.
     pub fn set_body<T: Into<String>>(&mut self, body: T) {
         let body = body.into();
-        self.headers_mut().insert(
+        let _ = self.headers_mut().insert(
             header::CONTENT_LENGTH,
             HeaderValue::from_str(&body.len().to_string())
                 .expect("Given value for CONTENT_LENGTH is not valid"),
@@ -919,7 +922,8 @@ impl Response {
     /// Set Response's redirect location as status code.
     pub fn redirect(mut self, url: &'static str) -> Response {
         self.set_status(301);
-        self.headers_mut()
+        let _ = self
+            .headers_mut()
             .insert(header::LOCATION, HeaderValue::from_static(url));
 
         self
@@ -927,7 +931,8 @@ impl Response {
 
     /// Wrapper around `Request.set_body` for the HTML context type.
     pub fn html(&mut self, html: &str) {
-        self.headers_mut()
+        let _ = self
+            .headers_mut()
             .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
 
         self.set_body(html);
@@ -935,7 +940,7 @@ impl Response {
 
     /// Wrapper around `Request.set_body` for the JS context type.
     pub fn js(&mut self, js: &str) {
-        self.headers_mut().insert(
+        let _ = self.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/javascript"),
         );
@@ -945,7 +950,7 @@ impl Response {
 
     /// Wrapper around `Request.set_body` for the JSON context type.
     pub fn json<J: Serialize + Send + Sync>(&mut self, json: J) {
-        self.headers_mut().insert(
+        let _ = self.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/json"),
         );
@@ -961,7 +966,7 @@ impl Response {
 
     /// An error happened, add a error message to be send out instead.
     pub fn json_error(&mut self, messages: Vec<&str>) {
-        self.headers_mut().insert(
+        let _ = self.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/json"),
         );
@@ -1045,7 +1050,7 @@ struct Wrapper<T: Serialize + Send + Sync> {
 
 impl<T: Serialize + Send + Sync> Wrapper<T> {
     /// Constructs a new `Wrapper<T>`
-    pub fn new() -> Wrapper<T> {
+    fn new() -> Wrapper<T> {
         Wrapper::default()
     }
 

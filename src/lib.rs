@@ -923,12 +923,16 @@ impl Response {
     }
 
     /// Set Response's redirect location as status code.
-    pub fn redirect(mut self, url: &'static str) -> Self {
+    pub fn redirect(&mut self, url: &'static str) {
         self.set_status(301);
         let _ = self
             .headers_mut()
             .insert(header::LOCATION, HeaderValue::from_static(url));
+    }
 
+    /// Set Response's redirect location as status code.
+    pub fn with_redirect(mut self, url: &'static str) -> Self {
+        self.redirect(url);
         self
     }
 
@@ -1008,6 +1012,12 @@ impl<T: Serialize + Send + Sync> JsonBuilder<T> {
         self.wrapper.set_result(body);
     }
 
+    /// Set the body of the wrapper
+    pub fn with_body(mut self, body: T) -> Self {
+        self.body(body);
+        self
+    }
+
     /// Added an error message to the wrapper
     pub fn error(&mut self, message: &str) {
         self.wrapper.add_message(message);
@@ -1023,15 +1033,31 @@ impl<T: Serialize + Send + Sync> JsonBuilder<T> {
     /// Set the status code of the Json response.
     ///
     /// This can be gotten with `StatusCode.as_u16`.
-    pub fn set_code(&mut self, status: u16) {
+    pub fn code(&mut self, status: u16) {
         self.wrapper.set_code(status);
+    }
+
+    /// Set the status code of the Json response.
+    ///
+    /// This can be gotten with `StatusCode.as_u16`.
+    pub fn with_code(mut self, status: u16) -> Self {
+        self.code(status);
+        self
     }
 
     /// Set the status string of the Json response.
     ///
     /// This can be gotten with `StatusCode.as_str`.
-    pub fn set_status(&mut self, status: &str) {
+    pub fn status(&mut self, status: &str) {
         self.wrapper.set_status(status);
+    }
+
+    /// Set the status string of the Json response.
+    ///
+    /// This can be gotten with `StatusCode.as_str`.
+    pub fn with_status(mut self, status: &str) -> Self {
+        self.status(status);
+        self
     }
 
     fn get_body(&self) -> String {

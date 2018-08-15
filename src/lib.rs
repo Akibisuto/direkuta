@@ -1,5 +1,5 @@
 //! A web framework built around Hyper.
-//! 
+//!
 //! # Examples
 //! ```
 //! Direkuta::new()
@@ -15,9 +15,12 @@
 
 #![deny(
     missing_docs,
-    trivial_casts, trivial_numeric_casts,
-    unsafe_code, unstable_features,
-    unused_import_braces, unused_qualifications
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unstable_features,
+    unused_import_braces,
+    unused_qualifications
 )]
 
 extern crate futures;
@@ -41,8 +44,8 @@ use futures::{future, Future};
 use http::{request, response};
 pub use hyper::header::{self, HeaderMap, HeaderValue};
 use hyper::service::{NewService, Service};
-pub use hyper::{Body, StatusCode};
 use hyper::{rt, Method, Server, Uri, Version};
+pub use hyper::{Body, StatusCode};
 use regex::Regex;
 use serde::Serialize;
 
@@ -304,7 +307,7 @@ pub struct State {
 
 impl State {
     /// Constructs a new `State`
-    /// 
+    ///
     /// # Examples
     /// ```
     /// let state = State::new();
@@ -314,10 +317,10 @@ impl State {
     }
 
     /// Sets the value of whatever type is passed.
-    /// 
+    ///
     /// Please not that you cannot have teo of the same types,
     /// one will overwrite the other.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # let state = State::new();
@@ -328,9 +331,9 @@ impl State {
     }
 
     /// Attempt to get a value based on type.
-    /// 
+    ///
     /// Use this if you are not sure if the type exists.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # let state = State::new();
@@ -351,25 +354,23 @@ impl State {
     }
 
     /// Get a value based on type.
-    /// 
+    ///
     /// This is a wrapper around `try_get` and uses an `expect`.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # let state = State::new();
     /// # state.set(String::from("Hello World!"));
     /// println!("{}", state.get::<String>());
     /// ```
-    /// 
+    ///
     /// # Panics
     /// If the key does not exist the function will panic
-    /// 
+    ///
     /// If you do not know if the type exists use `try_get`.
     pub fn get<T: Any + Send + Sync + 'static>(&self) -> &T {
-        self.try_get::<T>().expect(&format!(
-            "Key not found in state: {:?}", 
-            &TypeId::of::<T>()
-        ))
+        self.try_get::<T>()
+            .expect(&format!("Key not found in state: {:?}", &TypeId::of::<T>()))
     }
 }
 
@@ -387,7 +388,7 @@ struct Route {
 }
 
 /// Route builder.
-/// 
+///
 /// This is not to be used directly,
 /// its only used for `Direkuta.route`.
 pub struct RouteBuilder {
@@ -421,7 +422,7 @@ impl RouteBuilder {
     }
 
     /// Adds a `Method::GET` request handler.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -446,7 +447,7 @@ impl RouteBuilder {
     }
 
     /// Adds a `Method::POST` request handler.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -471,7 +472,7 @@ impl RouteBuilder {
     }
 
     /// Adds a `Method::PUT` request handler.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -496,7 +497,7 @@ impl RouteBuilder {
     }
 
     /// Adds a `Method::DELETE` request handler.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -521,7 +522,7 @@ impl RouteBuilder {
     }
 
     /// Adds a `Method::HEAD` request handler.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -546,7 +547,7 @@ impl RouteBuilder {
     }
 
     /// Adds a `Method::OPTIONS` request handler.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -571,7 +572,7 @@ impl RouteBuilder {
     }
 
     /// Create a path for multiple request types.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -608,7 +609,7 @@ impl RouteBuilder {
 }
 
 /// Route Path builder.
-/// 
+///
 /// This is not to be used directly,
 /// its only used for `RouteBuilder.path`.
 pub struct RoutePathBuilder {
@@ -635,7 +636,7 @@ impl RoutePathBuilder {
     }
 
     /// Adds a `Method::GET` request handler.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -658,7 +659,7 @@ impl RoutePathBuilder {
     }
 
     /// Adds a `Method::POST` request handler.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -681,7 +682,7 @@ impl RoutePathBuilder {
     }
 
     /// Adds a `Method::PUT` request handler.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -704,7 +705,7 @@ impl RoutePathBuilder {
     }
 
     /// Adds a `Method::DELETE` request handler.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -727,7 +728,7 @@ impl RoutePathBuilder {
     }
 
     /// Adds a `Method::HEAD` request handler.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -750,7 +751,7 @@ impl RoutePathBuilder {
     }
 
     /// Adds a `Method::OPTIONS` request handler.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// # Direkuta::new()
@@ -837,7 +838,7 @@ pub struct Response {
 
 impl Response {
     /// Constructs a new `Response`
-    /// 
+    ///
     /// # Examples
     /// ```
     /// let res = Response::new();

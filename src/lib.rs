@@ -923,7 +923,7 @@ impl Response {
     }
 
     /// Set Response's redirect location as status code.
-    pub fn redirect(mut self, url: &'static str) -> Response {
+    pub fn redirect(mut self, url: &'static str) -> Self {
         self.set_status(301);
         let _ = self
             .headers_mut()
@@ -963,6 +963,15 @@ impl Response {
         json(&mut builder);
 
         self.set_body(builder.get_body());
+    }
+
+    /// Builder function for Json responses
+    pub fn with_json<T: Serialize + Send + Sync, F: Fn(&mut JsonBuilder<T>)>(
+        mut self,
+        json: F,
+    ) -> Self {
+        self.json(json);
+        self
     }
 
     /// Transform the Response intot a Hyper Response.

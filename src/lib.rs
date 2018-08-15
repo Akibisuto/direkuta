@@ -279,11 +279,14 @@ impl State {
     pub fn try_get<T: Any + Send + Sync + 'static>(&self) -> Option<&T> {
         self.inner
             .get(&TypeId::of::<T>())
-            .and_then(|b| Any::downcast_ref::<T>(b))
+            .and_then(|b| b.downcast_ref::<T>())
     }
 
     pub fn get<T: Any + Send + Sync + 'static>(&self) -> &T {
-        self.try_get::<T>().expect("Key not found in state")
+        self.try_get::<T>().expect(&format!(
+            "Key not found in state: {:?}", 
+            &TypeId::of::<T>()
+        ))
     }
 }
 

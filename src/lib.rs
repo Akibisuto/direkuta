@@ -52,12 +52,15 @@ pub use hyper::{Body, StatusCode};
 use regex::Regex;
 use serde::Serialize;
 
+#[cfg(feature = "template")]
+pub use tera::{Context, Tera};
+
 /// The Direkuta web server itself.
 pub struct Direkuta {
     /// Store state as its own type.
     state: Arc<State>,
     /// Stores middleware, to be later used in `Service::call(...)`.
-    middle: Arc<HashMap<TypeId, Box<Herupa + Send + Sync + 'static>>>,
+    middle: Arc<HashMap<TypeId, Box<Middle + Send + Sync + 'static>>>,
     /// The router, it know where a url is meant to go.
     routes: Arc<RouteRecognizer>,
 }
@@ -97,7 +100,7 @@ impl Direkuta {
 
     /// Insert a middleware into `Direkuta`
     ///
-    /// Middleware is anything that impliments the trait `Herupa`.
+    /// Middleware is anything that impliments the trait `Middle`.
     ///
     /// # Examples
     /// ```
@@ -111,7 +114,7 @@ impl Direkuta {
     /// # Panics
     /// Do not use this from anywhere else but the main constructor.
     /// Using this from any else will cause tread panic.
-    pub fn middle<T: Herupa + Send + Sync + 'static>(mut self, middle: T) -> Self {
+    pub fn middle<T: Middle + Send + Sync + 'static>(mut self, middle: T) -> Self {
         let _ = Arc::get_mut(&mut self.middle)
             .expect("Cannot get_mut on middle")
             .insert(TypeId::of::<T>(), Box::new(middle));
@@ -173,7 +176,7 @@ impl Default for Direkuta {
         let mut state = State::new();
 
         #[cfg(feature = "template")]
-        state.set(match tera::Tera::parse("templates/**/*") {
+        state.set(match Tera::parse("templates/**/*") {
             Ok(t) => t,
             Err(e) => {
                 println!("Parsing error(s): {}", e);
@@ -264,7 +267,7 @@ impl Service for Direkuta {
 ///         println!("[{}] `{}`", res.status(), req.uri());
 ///     }
 /// }
-pub trait Herupa {
+pub trait Middle {
     /// Called before a request is sent through `RouteRecognizer`
     fn before(&self, &Request);
     /// Called after a request is sent through `RouteRecognizer`
@@ -290,7 +293,7 @@ impl Logger {
     }
 }
 
-impl Herupa for Logger {
+impl Middle for Logger {
     fn before(&self, req: &Request) {
         println!("[{}] `{}`", req.method(), req.uri());
     }
@@ -949,38 +952,23 @@ impl Response {
     }
 
     /// Wrapper around `Request.set_body` for the JSON context type.
-    pub fn json<J: Serialize + Send + Sync>(&mut self, json: J) {
+    pub fn json<
+        T: Serialize + Send + Sync,
+        F: Fn(&mut JsonBuilder<T>),
+    >(
+        &mut self,
+        json: F,
+    ) {
+        let mut builder = JsonBuilder::new::<T>();
+
         let _ = self.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/json"),
         );
 
-        let mut wrapper: Wrapper<J> = Wrapper::new();
-        wrapper.set_code(self.parts.status.as_u16());
-        wrapper.set_status(&self.parts.status.as_str());
-        wrapper.set_result(json);
+        json(&mut builder);
 
-        let json = serde_json::to_string(&wrapper).expect("Can not transform strcut into json");
-        self.set_body(json);
-    }
-
-    /// An error happened, add a error message to be send out instead.
-    pub fn json_error(&mut self, messages: Vec<&str>) {
-        let _ = self.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/json"),
-        );
-
-        let mut wrapper: Wrapper<()> = Wrapper::new();
-        wrapper.set_code(self.parts.status.as_u16());
-        wrapper.set_status(&self.parts.status.as_str());
-
-        for message in messages {
-            wrapper.add_message(message);
-        }
-
-        let json = serde_json::to_string(&wrapper).expect("Can not transform strcut into json");
-        self.set_body(json);
+        self.set_body(builder.get_body());
     }
 
     /// Transform the Response intot a Hyper Response.
@@ -993,6 +981,108 @@ impl Default for Response {
     fn default() -> Response {
         let (parts, body) = hyper::Response::new(Body::empty()).into_parts();
         Response { body, parts }
+    }
+}
+
+/// JsonBuilder is a builder for Json responses.
+/// 
+/// Do not directly use
+pub struct JsonBuilder<T: Serialize + Send + Sync> {
+    /// Json response wrapper to be sent.
+    wrapper: Wrapper<T>,
+}
+
+impl JsonBuilder<()> {
+    /// Creates a JsonBuilder with given type.
+    fn new<T: Serialize + Send + Sync>() -> JsonBuilder<T> {
+        JsonBuilder::default()
+    }
+}
+
+impl<T: Serialize + Send + Sync> JsonBuilder<T> {
+    /// Set the body of the wrapper
+    pub fn body(&mut self, body: T) {
+        self.wrapper.set_result(body);
+    }
+
+    /// Added an error message to the wrapper
+    pub fn error(&mut self, message: &str) {
+        self.wrapper.add_message(message);
+    }
+
+    /// Added an error message to the wrapper
+    pub fn errors(&mut self, messages: Vec<&str>) {
+        for message in messages {
+            self.wrapper.add_message(message);
+        }
+    }
+
+    /// Set the status code of the Json response.
+    /// 
+    /// This can be gotten with `StatusCode.as_u16`.
+    pub fn set_code(&mut self, status: u16) {
+        self.wrapper.set_code(status);
+    }
+
+    /// Set the status string of the Json response.
+    /// 
+    /// This can be gotten with `StatusCode.as_str`.
+    pub fn set_status(&mut self, status: &str) {
+        self.wrapper.set_status(status);
+    }
+
+    fn get_body(&self) -> String {
+        serde_json::to_string(&self.wrapper).expect("Can not transform strcut into json")
+    }
+}
+
+impl<T: Serialize + Send + Sync> Default for JsonBuilder<T> {
+    fn default() -> JsonBuilder<T> {
+        Self {
+            wrapper: Wrapper::new(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct Wrapper<T: Serialize + Send + Sync> {
+    code: u16,
+    messages: Vec<String>,
+    result: Option<T>,
+    status: String,
+}
+
+impl<T: Serialize + Send + Sync> Wrapper<T> {
+    /// Constructs a new `Wrapper<T>`
+    fn new() -> Wrapper<T> {
+        Wrapper::default()
+    }
+
+    fn add_message(&mut self, message: &str) {
+        self.messages.push(String::from(message));
+    }
+
+    fn set_code(&mut self, code: u16) {
+        self.code = code;
+    }
+
+    fn set_status(&mut self, status: &str) {
+        self.status = String::from(status);
+    }
+
+    fn set_result(&mut self, result: T) {
+        self.result = Some(result);
+    }
+}
+
+impl<T: Serialize + Send + Sync> Default for Wrapper<T> {
+    fn default() -> Wrapper<T> {
+        Self {
+            code: 200,
+            messages: Vec::new(),
+            result: None,
+            status: String::from("OK"),
+        }
     }
 }
 
@@ -1037,47 +1127,5 @@ impl Request {
     /// Return Request body.
     pub fn body(&mut self) -> Body {
         ::std::mem::replace(&mut self.body, Body::empty())
-    }
-}
-
-#[derive(Serialize)]
-struct Wrapper<T: Serialize + Send + Sync> {
-    code: u16,
-    messages: Vec<String>,
-    result: Option<T>,
-    status: String,
-}
-
-impl<T: Serialize + Send + Sync> Wrapper<T> {
-    /// Constructs a new `Wrapper<T>`
-    fn new() -> Wrapper<T> {
-        Wrapper::default()
-    }
-
-    fn add_message(&mut self, message: &str) {
-        self.messages.push(String::from(message));
-    }
-
-    fn set_code(&mut self, code: u16) {
-        self.code = code;
-    }
-
-    fn set_status(&mut self, status: &str) {
-        self.status = String::from(status);
-    }
-
-    fn set_result(&mut self, result: T) {
-        self.result = Some(result);
-    }
-}
-
-impl<T: Serialize + Send + Sync> Default for Wrapper<T> {
-    fn default() -> Wrapper<T> {
-        Self {
-            code: 200,
-            messages: Vec::new(),
-            result: None,
-            status: String::from("OK"),
-        }
     }
 }

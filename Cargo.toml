@@ -43,5 +43,10 @@ path = "examples/captures.rs"
 name = "hello"
 path = "examples/hello.rs"
 
+[[example]]
+name = "json"
+path = "examples/json.rs"
+
 [features]
+default = ["template"]
 template = ["tera"]

@@ -10,7 +10,7 @@ homepage = "https://gitlab.com/akibisuto/direkuta"
 documentation = "https://docs.rs/direkuta"
 repository = "https://gitlab.com/akibisuto/direkuta"
 
-keywords = ["http", "hyper", "rest", "json"]
+keywords = ["http", "hyper", "json", "tera", "rest"]
 categories = ["network-programming", "web-programming::http-server"]
 
 include = [

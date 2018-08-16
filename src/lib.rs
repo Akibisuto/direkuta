@@ -61,7 +61,7 @@ pub struct Direkuta {
     state: Arc<State>,
     /// Stores middleware, to be later used in `Service::call(...)`.
     middle: Arc<HashMap<TypeId, Box<Middle + Send + Sync + 'static>>>,
-    /// The router, it know where a url is meant to go.
+    /// The router, it knows where a url is meant to go.
     routes: Arc<RouteRecognizer>,
 }
 
@@ -90,7 +90,7 @@ impl Direkuta {
     ///
     /// # Panics
     /// Do not use this from anywhere else but the main constructor.
-    /// Using this from any else will cause tread panic.
+    /// Using this from any else will cause a thread panic.
     pub fn state<T: Any + Send + Sync + 'static>(mut self, state: T) -> Self {
         Arc::get_mut(&mut self.state)
             .expect("Cannot get_mut on state")
@@ -113,7 +113,7 @@ impl Direkuta {
     ///
     /// # Panics
     /// Do not use this from anywhere else but the main constructor.
-    /// Using this from any else will cause tread panic.
+    /// Using this from any else will cause a thread panic.
     pub fn middle<T: Middle + Send + Sync + 'static>(mut self, middle: T) -> Self {
         let _ = Arc::get_mut(&mut self.middle)
             .expect("Cannot get_mut on middle")
@@ -306,7 +306,6 @@ impl Middle for Logger {
 /// A wrapper around HashMap<TypeId, Any>, used to store Direkuta state.
 ///
 /// Stored state cannot be dynamically create and must be static.
-#[derive(Debug)]
 pub struct State {
     inner: HashMap<TypeId, Box<Any + Send + Sync + 'static>>,
 }
@@ -324,7 +323,7 @@ impl State {
 
     /// Sets the value of whatever type is passed.
     ///
-    /// Please not that you cannot have teo of the same types,
+    /// Please note that you cannot have teo of the same types,
     /// one will overwrite the other.
     ///
     /// # Examples
@@ -344,7 +343,7 @@ impl State {
     /// ```
     /// # let state = State::new();
     /// # state.set(String::from("Hello World!"));
-    /// match state.get::<String>() {
+    /// match state.try_get::<String>() {
     ///     Some(s) => {
     ///         println!("{}", s);
     ///     },

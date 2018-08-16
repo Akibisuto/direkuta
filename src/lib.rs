@@ -41,6 +41,9 @@ extern crate tera;
 use std::any::{Any, TypeId};
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
 use std::sync::Arc;
 
 use futures::{future, Future};
@@ -912,6 +915,17 @@ impl Response {
     }
 
     /// Return Response HTTP headers.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::{header, HeaderValue, Response};
+    /// let res = Response::new();
+    /// res.headers_mut().insert(
+    ///     header::CONTENT_TYPE,
+    ///     HeaderValue::from_static("text/plain")
+    /// );
+    /// ```
     pub fn headers_mut(&mut self) -> &mut HeaderMap<HeaderValue> {
         &mut self.parts.headers
     }
@@ -1024,7 +1038,8 @@ impl Response {
     ///
     /// ```rust
     /// # use direkuta::Response;
-    /// let res = Response::new().with_redirect("/example/moved");
+    /// let res = Response::new()
+    ///     .with_redirect("/example/moved");
     /// ```
     pub fn with_redirect(mut self, url: &'static str) -> Self {
         self.redirect(url);
@@ -1041,23 +1056,96 @@ impl Response {
         self.set_body(html);
     }
 
-    // TODO: Change this into a builder closure, with string and file functions.
+    /// Wrapper around [Response.set_body](Response::set_body) for the CSS context type.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new();
+    /// res.css(|c| {
+    ///     c.path("/static/app.css");
+    /// });
+    /// ```
+    pub fn css<F: Fn(&mut CssBuilder)>(&mut self, css: F) {
+        let _ = self.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/css"),
+        );
+
+        let mut builder = CssBuilder::new();
+
+        css(&mut builder);
+
+        self.set_body(builder.get_body());
+    }
+
+    /// Wrapper around [Response.set_body](Response::set_body) for the CSS context type.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new()
+    ///     .with_css(|c| {
+    ///         c.path("/static/app.css");
+    ///     });
+    /// ```
+    pub fn with_css<F: Fn(&mut CssBuilder)>(mut self, css: F) -> Self {
+        self.css(css);
+        self
+    }
+
     /// Wrapper around [Response.set_body](Response::set_body) for the JS context type.
-    pub fn js<T: Into<String>>(&mut self, js: T) {
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new();
+    /// res.js(|j| {
+    ///     js.path("/static/app.js");
+    /// });
+    /// ```
+    pub fn js<F: Fn(&mut JsBuilder)>(&mut self, js: F) {
         let _ = self.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/javascript"),
         );
 
-        self.set_body(js);
+        let mut builder = JsBuilder::new();
+
+        js(&mut builder);
+
+        self.set_body(builder.get_body());
+    }
+
+    /// Wrapper around [Response.set_body](Response::set_body) for the JS context type.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new()
+    ///     .with_js(|j| {
+    ///         js.path("/static/app.js");
+    ///     });
+    /// ```
+    pub fn with_js<F: Fn(&mut JsBuilder)>(mut self, js: F) -> Self {
+        self.js(js);
+        self
     }
 
     /// Wrapper around [Response.set_body](Response::set_body) for the JSON context type.
     ///
     /// # Examples
     ///
-    /// ```rust
-    /// # use direkuta::Response;
+    /// ```rust,ingore
+    /// #[derive(Serialize)]
+    /// struct Example {
+    ///     hello: String,
+    /// }
+    ///
     /// let res = Response::new();
     /// res.json(|j| {
     ///     j.body(Example {
@@ -1116,7 +1204,113 @@ impl Default for Response {
     }
 }
 
-/// A builder for Json responses.
+/// A builder function for CSS Responses.
+///
+/// Do not directly use.
+pub struct CssBuilder {
+    inner: String,
+}
+
+impl CssBuilder {
+    fn new() -> CssBuilder {
+        CssBuilder::default()
+    }
+
+    fn get_body(&self) -> String {
+        self.inner.clone()
+    }
+
+    /// Load from [File](std::fs::File).
+    pub fn file(&mut self, mut file: File) {
+        let _ = file.read_to_string(&mut self.inner)
+            .expect("Unable to write file contents");
+    }
+
+    /// Load from path.
+    ///
+    /// If the file cannot be found nothing there will be an empty response.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new();
+    /// res.css(|c| {
+    ///     c.path("/static/app.css");
+    /// });
+    /// ```
+    pub fn path<P: AsRef<Path>>(&mut self, path: P) {
+        match File::open(path) {
+            Ok(f) => {
+                self.file(f);
+            },
+            Err(_) => {},
+        }
+    }
+}
+
+impl Default for CssBuilder {
+    fn default() -> CssBuilder {
+        CssBuilder {
+            inner: String::new(),
+        }
+    }
+}
+
+/// A builder function for JS Responses.
+///
+/// Do not directly use.
+pub struct JsBuilder {
+    inner: String,
+}
+
+impl JsBuilder {
+    fn new() -> JsBuilder {
+        JsBuilder::default()
+    }
+
+    fn get_body(&self) -> String {
+        self.inner.clone()
+    }
+
+    /// Load from [File](std::fs::File).
+    pub fn file(&mut self, mut file: File) {
+        let _ = file.read_to_string(&mut self.inner)
+            .expect("Unable to write file contents");
+    }
+
+    /// Load from path.
+    ///
+    /// If the file cannot be found nothing there will be an empty response.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new();
+    /// res.js(|j| {
+    ///     j.path("/static/app.js");
+    /// });
+    /// ```
+    pub fn path<P: AsRef<Path>>(&mut self, path: P) {
+        match File::open(path) {
+            Ok(f) => {
+                self.file(f);
+            },
+            Err(_) => {},
+        }
+    }
+}
+
+impl Default for JsBuilder {
+    fn default() -> JsBuilder {
+        JsBuilder {
+            inner: String::new(),
+        }
+    }
+}
+
+/// A builder for JSON responses.
 ///
 /// Do not directly use.
 pub struct JsonBuilder<T: Serialize + Send + Sync> {

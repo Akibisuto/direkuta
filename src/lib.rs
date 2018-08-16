@@ -1,13 +1,13 @@
 //! A web framework built around Hyper.
 //!
 //! # Examples
-//! ```
+//!
+//! ```rust
+//! # use direkuta::{Direkuta, Response};
 //! Direkuta::new()
 //!     .route(|r| {
 //!         r.get("/", |_, _, _| {
-//!             let mut res = Response::new();
-//!             res.set_body(String::from("Hello World!"));
-//!             res
+//!             Response::new().with_body("Hello World!")
 //!         });
 //!     })
 //!     .run("0.0.0.0:3000");
@@ -59,33 +59,33 @@ pub use tera::{Context, Tera};
 pub struct Direkuta {
     /// Store state as its own type.
     state: Arc<State>,
-    /// Stores middleware, to be later used in `Service::call(...)`.
+    /// Stores middleware, to be later used in [Service::call](Service::call).
     middle: Arc<HashMap<TypeId, Box<Middle + Send + Sync + 'static>>>,
     /// The router, it knows where a url is meant to go.
     routes: Arc<RouteRecognizer>,
 }
 
 impl Direkuta {
-    /// Constructs a new `Direkuta`
+    /// Constructs a new [Direkuta](Direkuta).
     ///
     /// # Examples
-    /// ```
-    /// use direkuta::Direkuta;
     ///
-    /// let dire = Direkuta::new();
+    /// ```rust
+    /// # use direkuta::Direkuta;
+    /// Direkuta::new();
     /// ```
     pub fn new() -> Self {
         Direkuta::default()
     }
 
-    /// Insert a state into `Direkuta`
+    /// Insert a state into [Direkuta](Direkuta).
     ///
     /// # Examples
-    /// ```
-    /// use direkuta::Direkuta;
     ///
+    /// ```rust
+    /// # use direkuta::Direkuta;
     /// Direkuta::new()
-    ///     ...
+    ///     .state(String::from("Hello World!"));
     /// ```
     ///
     /// # Panics
@@ -98,20 +98,20 @@ impl Direkuta {
         self
     }
 
-    /// Insert a middleware into `Direkuta`
+    /// Insert a middleware into [Direkuta](Direkuta).
     ///
-    /// Middleware is anything that impliments the trait `Middle`.
+    /// Middleware is anything that impliments the trait [Middle](Middle).
     ///
     /// # Examples
-    /// ```
-    /// use direkuta::*;
     ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Logger};
     /// Direkuta::new()
-    ///     .middle(Logger::new())
-    ///     ...
+    ///     .middle(Logger::new());
     /// ```
     ///
     /// # Panics
+    ///
     /// Do not use this from anywhere else but the main constructor.
     /// Using this from any else will cause a thread panic.
     pub fn middle<T: Middle + Send + Sync + 'static>(mut self, middle: T) -> Self {
@@ -121,17 +121,16 @@ impl Direkuta {
         self
     }
 
-    /// Create new router as a closure
+    /// Create new router as a closure.
     ///
     /// # Examples
-    /// ```
-    /// use direkuta::*;
     ///
+    /// ```rust
+    /// # use direkuta::Direkuta;
     /// Direkuta::new()
     ///     .route(|r| {
-    ///         ...
-    ///     })
-    ///     ...
+    ///         // handlers here
+    ///     });
     /// ```
     pub fn route<R: Fn(&mut RouteBuilder) + Send + Sync + 'static>(mut self, route: R) -> Self {
         let mut route_builder = RouteBuilder {
@@ -144,20 +143,18 @@ impl Direkuta {
         self
     }
 
-    /// Run `Direkuta` as a Hyper server.
+    /// Run [Direkuta](Direkuta) as a Hyper server.
     ///
     /// # Examples
-    /// ```
-    /// use direkuta::Direkuta;
     ///
+    /// ```rust
+    /// # use direkuta::Direkuta;
     /// Direkuta::new()
-    ///     .route(|r| {
-    ///         ...
-    ///     })
-    ///     ...
+    ///     .run("0.0.0.0:3000");
     /// ```
     ///
     /// # Errors
+    ///
     /// If any errors come from the server they will be printed to the console.
     pub fn run(self, addr: &str) {
         let address = addr.parse().expect("Address not a valid socket address");
@@ -247,9 +244,9 @@ impl Service for Direkuta {
 /// All middleware must implement this trait.
 ///
 /// # Examples
-/// ```
-/// use direkuta::Herupa;
 ///
+/// ```rust
+/// # use direkuta::Middle;
 /// struct Logger {}
 ///
 /// impl Logger {
@@ -258,7 +255,7 @@ impl Service for Direkuta {
 ///     }
 /// }
 ///
-/// impl Herupa for Logger {
+/// impl Middle for Logger {
 ///     fn before(&self, req: &Request) {
 ///         println!("[{}] `{}`", req.method(), req.uri());
 ///     }
@@ -268,26 +265,26 @@ impl Service for Direkuta {
 ///     }
 /// }
 pub trait Middle {
-    /// Called before a request is sent through `RouteRecognizer`
+    /// Called before a request is sent through [RouteRecognizer](RouteRecognizer)
     fn before(&self, &Request);
-    /// Called after a request is sent through `RouteRecognizer`
+    /// Called after a request is sent through [RouteRecognizer](RouteRecognizer)
     fn after(&self, &Request, &Response);
 }
 
 /// A simple logger middleware.
 ///
 /// # Examples
-/// ```
-/// use direkuta::{Direkuta, Logger};
 ///
-/// let dire = Direkuta::new()
+/// ```rust
+/// # use direkuta::{Direkuta, Logger};
+/// Direkuta::new()
 ///     .middle(Logger::new());
 /// ```
 #[derive(Clone, Copy, Debug)]
 pub struct Logger {}
 
 impl Logger {
-    /// Constructs a new `Logger`
+    /// Constructs a new [Logger](Logger).
     pub fn new() -> Self {
         Logger::default()
     }
@@ -309,7 +306,7 @@ impl Default for Logger {
     }
 }
 
-/// A wrapper around HashMap<TypeId, Any>, used to store Direkuta state.
+/// A wrapper around HashMap<TypeId, Any>, used to store [Direkuta](Direkuta) state.
 ///
 /// Stored state cannot be dynamically create and must be static.
 pub struct State {
@@ -317,10 +314,12 @@ pub struct State {
 }
 
 impl State {
-    /// Constructs a new `State`
+    /// Constructs a new [State](State)
     ///
     /// # Examples
-    /// ```
+    ///
+    /// ```rust
+    /// # use direkuta::State;
     /// let state = State::new();
     /// ```
     pub fn new() -> Self {
@@ -329,12 +328,14 @@ impl State {
 
     /// Sets the value of whatever type is passed.
     ///
-    /// Please note that you cannot have teo of the same types,
-    /// one will overwrite the other.
+    /// Please note that you cannot have two states of the same types, one will overwrite the other.
     ///
     /// # Examples
-    /// ```
-    /// # let state = State::new();
+    ///
+    /// ```rust
+    /// # use direkuta::State;
+    /// let state = State::new();
+    ///
     /// state.set(String::from("Hello World!"));
     /// ```
     pub fn set<T: Any + Send + Sync + 'static>(&mut self, ctx: T) {
@@ -346,9 +347,13 @@ impl State {
     /// Use this if you are not sure if the type exists.
     ///
     /// # Examples
-    /// ```
-    /// # let state = State::new();
-    /// # state.set(String::from("Hello World!"));
+    ///
+    /// ```rust
+    /// # use direkuta::State;
+    /// let state = State::new();
+    ///
+    /// state.set(String::from("Hello World!"));
+    ///
     /// match state.try_get::<String>() {
     ///     Some(s) => {
     ///         println!("{}", s);
@@ -366,16 +371,21 @@ impl State {
 
     /// Get a value based on type.
     ///
-    /// This is a wrapper around `try_get` and uses an `expect`.
+    /// This is a wrapper around [try_get](State::try_get).
     ///
     /// # Examples
-    /// ```
-    /// # let state = State::new();
-    /// # state.set(String::from("Hello World!"));
+    ///
+    /// ```rust
+    /// # use direkuta::State;
+    /// let state = State::new();
+    ///
+    /// state.set(String::from("Hello World!"));
+    ///
     /// println!("{}", state.get::<String>());
     /// ```
     ///
     /// # Panics
+    ///
     /// If the key does not exist the function will panic
     ///
     /// If you do not know if the type exists use `try_get`.
@@ -400,14 +410,28 @@ struct Route {
 
 /// Route builder.
 ///
-/// This is not to be used directly,
-/// its only used for `Direkuta.route`.
+/// This is not to be used directly, it is only used for [Direkuta.route](Direkuta::route).
 pub struct RouteBuilder {
     routes: HashMap<Method, Vec<Route>>,
 }
 
 impl RouteBuilder {
-    fn route<
+    /// Normalizes and adds route to the routing map.
+    ///
+    /// Its easier to the the helper functions.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Method, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.route(Method::GET, "/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
+    ///         });
+    ///     });
+    /// ```
+    pub fn route<
         S: AsRef<str>,
         H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
     >(
@@ -426,25 +450,28 @@ impl RouteBuilder {
         self
     }
 
+    /// 'Finalizes' the [RouteBuilder](RouteBuilder).
+    ///
+    /// After this is called nothing should be add to the [RouteBuilder](RouteBuilder),
+    /// as it will not update.
     fn finish(self) -> RouteRecognizer {
         RouteRecognizer {
             routes: self.routes,
         }
     }
 
-    /// Adds a `Method::GET` request handler.
+    /// Adds a [GET](Method::GET) request handler.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.get("/", |_, _, _| {
-    ///     let mut res = Response::new();
-    ///     res.set_body(String::from("Hello World!"));
-    ///     res
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.get("/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
+    ///         });
+    ///     });
     /// ```
     pub fn get<
         S: AsRef<str>,
@@ -457,19 +484,18 @@ impl RouteBuilder {
         self.route(Method::GET, pattern, handler)
     }
 
-    /// Adds a `Method::POST` request handler.
+    /// Adds a [POST](Method::POST) request handler.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.post("/", |_, _, _| {
-    ///     let mut res = Response::new();
-    ///     res.set_body(String::from("Hello World!"));
-    ///     res
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.post("/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
+    ///         });
+    ///     });
     /// ```
     pub fn post<
         S: AsRef<str>,
@@ -482,19 +508,18 @@ impl RouteBuilder {
         self.route(Method::POST, pattern, handler)
     }
 
-    /// Adds a `Method::PUT` request handler.
+    /// Adds a [PUT](Method::PUT) request handler.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.put("/", |_, _, _| {
-    ///     let mut res = Response::new();
-    ///     res.set_body(String::from("Hello World!"));
-    ///     res
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.put("/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
+    ///         });
+    ///     });
     /// ```
     pub fn put<
         S: AsRef<str>,
@@ -507,19 +532,18 @@ impl RouteBuilder {
         self.route(Method::PUT, pattern, handler)
     }
 
-    /// Adds a `Method::DELETE` request handler.
+    /// Adds a [DELETE](Method::DELETE) request handler.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.delete("/", |_, _, _| {
-    ///     let mut res = Response::new();
-    ///     res.set_body(String::from("Hello World!"));
-    ///     res
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.delete("/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
+    ///         });
+    ///     });
     /// ```
     pub fn delete<
         S: AsRef<str>,
@@ -532,19 +556,18 @@ impl RouteBuilder {
         self.route(Method::DELETE, pattern, handler)
     }
 
-    /// Adds a `Method::HEAD` request handler.
+    /// Adds a [HEAD](Method::HEAD) request handler.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.head("/", |_, _, _| {
-    ///     let mut res = Response::new();
-    ///     res.set_body(String::from("Hello World!"));
-    ///     res
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.head("/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
+    ///         });
+    ///     });
     /// ```
     pub fn head<
         S: AsRef<str>,
@@ -557,19 +580,17 @@ impl RouteBuilder {
         self.route(Method::HEAD, pattern, handler)
     }
 
-    /// Adds a `Method::OPTIONS` request handler.
+    /// Adds a [OPTIONS](Method::OPTIONS) request handler.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.options("/", |_, _, _| {
-    ///     let mut res = Response::new();
-    ///     res.set_body(String::from("Hello World!"));
-    ///     res
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
+    ///
+    /// ```rust
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.options("/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
+    ///         });
+    ///     });
     /// ```
     pub fn options<
         S: AsRef<str>,
@@ -585,18 +606,17 @@ impl RouteBuilder {
     /// Create a path for multiple request types.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.path("/", |r| {
-    ///     r.get(|_, _, _| {
-    ///         let mut res = Response::new();
-    ///         res.set_body(String::from("Hello World!"));
-    ///         res
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.path("/", |r| {
+    ///             r.get(|_, _, _| {
+    ///                 Response::new().with_body("Hello World!")
+    ///             });
+    ///         });
     ///     });
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
     /// ```
     pub fn path<S: AsRef<str>, H: Fn(&mut RoutePathBuilder) + Send + Sync + 'static>(
         &mut self,
@@ -621,15 +641,31 @@ impl RouteBuilder {
 
 /// Route Path builder.
 ///
-/// This is not to be used directly,
-/// its only used for `RouteBuilder.path`.
+/// This is not to be used directly, it is only used for [RouteBuilder.path](RouteBuilder::path).
 pub struct RoutePathBuilder {
     pattern: Regex,
     routes: HashMap<Method, Vec<Route>>,
 }
 
 impl RoutePathBuilder {
-    fn route<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+    /// Adds route to routing map.
+    ///
+    /// Its easier to the the helper functions.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Method, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.path("/", |r| {
+    ///             r.route(Method::GET, |_, _, _| {
+    ///                 Response::new().with_body("Hello World!")
+    ///             });
+    ///         });
+    ///     });
+    /// ```
+    pub fn route<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
         method: Method,
         handler: H,
@@ -642,25 +678,28 @@ impl RoutePathBuilder {
         self
     }
 
+    /// 'Finalizes' the [RouteBuilder](RouteBuilder).
+    ///
+    /// After this is called nothing should be add to the [RouteBuilder](RouteBuilder),
+    /// as it will not update.
     fn finish(self) -> HashMap<Method, Vec<Route>> {
         self.routes
     }
 
-    /// Adds a `Method::GET` request handler.
+    /// Adds a [GET](Method::GET) request handler.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.path("/", |r| {
-    ///     r.get(|_, _, _| {
-    ///         let mut res = Response::new();
-    ///         res.set_body(String::from("Hello World!"));
-    ///         res
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.path("/", |r| {
+    ///             r.get(|_, _, _| {
+    ///                 Response::new().with_body("Hello World!")
+    ///             });
+    ///         });
     ///     });
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
     /// ```
     pub fn get<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
@@ -669,21 +708,20 @@ impl RoutePathBuilder {
         self.route(Method::GET, handler)
     }
 
-    /// Adds a `Method::POST` request handler.
+    /// Adds a [POST](Method::POST) request handler.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.path("/", |r| {
-    ///     r.post(|_, _, _| {
-    ///         let mut res = Response::new();
-    ///         res.set_body(String::from("Hello World!"));
-    ///         res
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.path("/", |r| {
+    ///             r.post(|_, _, _| {
+    ///                 Response::new().with_body("Hello World!")
+    ///             });
+    ///         });
     ///     });
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
     /// ```
     pub fn post<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
@@ -692,21 +730,20 @@ impl RoutePathBuilder {
         self.route(Method::POST, handler)
     }
 
-    /// Adds a `Method::PUT` request handler.
+    /// Adds a [PUT](Method::PUT) request handler.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.path("/", |r| {
-    ///     r.put(|_, _, _| {
-    ///         let mut res = Response::new();
-    ///         res.set_body(String::from("Hello World!"));
-    ///         res
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.path("/", |r| {
+    ///             r.put(|_, _, _| {
+    ///                 Response::new().with_body("Hello World!")
+    ///             });
+    ///         });
     ///     });
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
     /// ```
     pub fn put<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
@@ -715,21 +752,20 @@ impl RoutePathBuilder {
         self.route(Method::PUT, handler)
     }
 
-    /// Adds a `Method::DELETE` request handler.
+    /// Adds a [DELETE](Method::DELETE) request handler.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.path("/", |r| {
-    ///     r.delete(|_, _, _| {
-    ///         let mut res = Response::new();
-    ///         res.set_body(String::from("Hello World!"));
-    ///         res
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.path("/", |r| {
+    ///             r.delete(|_, _, _| {
+    ///                 Response::new().with_body("Hello World!")
+    ///             });
+    ///         });
     ///     });
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
     /// ```
     pub fn delete<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
@@ -738,21 +774,20 @@ impl RoutePathBuilder {
         self.route(Method::DELETE, handler)
     }
 
-    /// Adds a `Method::HEAD` request handler.
+    /// Adds a [HEAD](Method::HEAD) request handler.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.path("/", |r| {
-    ///     r.head(|_, _, _| {
-    ///         let mut res = Response::new();
-    ///         res.set_body(String::from("Hello World!"));
-    ///         res
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.path("/", |r| {
+    ///             r.head(|_, _, _| {
+    ///                 Response::new().with_body("Hello World!")
+    ///             });
+    ///         });
     ///     });
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
     /// ```
     pub fn head<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
@@ -761,21 +796,20 @@ impl RoutePathBuilder {
         self.route(Method::HEAD, handler)
     }
 
-    /// Adds a `Method::OPTIONS` request handler.
+    /// Adds a [OPTIONS](Method::OPTIONS) request handler.
     ///
     /// # Examples
-    /// ```
-    /// # Direkuta::new()
-    /// #     .route(|r| {
-    /// r.path("/", |r| {
-    ///     r.options(|_, _, _| {
-    ///         let mut res = Response::new();
-    ///         res.set_body(String::from("Hello World!"));
-    ///         res
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.path("/", |r| {
+    ///             r.options(|_, _, _| {
+    ///                 Response::new().with_body("Hello World!")
+    ///             });
+    ///         });
     ///     });
-    /// });
-    /// #     })
-    /// #     .run("0.0.0.0:3000");
     /// ```
     pub fn options<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
         &mut self,
@@ -785,14 +819,16 @@ impl RoutePathBuilder {
     }
 }
 
-/// A type wrapper for ease of use Captures
+/// A type wrapper for ease of use Captures.
 type Captures = Vec<(Option<String>, String)>;
 
+/// Route handler.
 struct RouteRecognizer {
     routes: HashMap<Method, Vec<Route>>,
 }
 
 impl RouteRecognizer {
+    /// When a request is recived this is called to find a handler.
     fn recognize(
         &self,
         method: &Method,
@@ -814,6 +850,7 @@ impl RouteRecognizer {
     }
 }
 
+/// Takes each capture and transfroms it into a vector of string tuples.
 fn get_owned_captures(re: &Regex, path: &str) -> Option<Captures> {
     re.captures(path).map(|caps| {
         let mut res = Vec::with_capacity(caps.len());
@@ -828,6 +865,10 @@ fn get_owned_captures(re: &Regex, path: &str) -> Option<Captures> {
     })
 }
 
+/// Normalizes the regex paths.
+///
+/// Removes the beginning `^` and ending `$` and `/`, if the exist.
+/// Then adds them even if they weren't there.
 fn normalize_pattern(pattern: &str) -> Cow<str> {
     let pattern = pattern
         .trim()
@@ -848,10 +889,12 @@ pub struct Response {
 }
 
 impl Response {
-    /// Constructs a new `Response`
+    /// Constructs a new `Response`.
     ///
     /// # Examples
-    /// ```
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
     /// let res = Response::new();
     /// ```
     pub fn new() -> Self {
@@ -889,12 +932,28 @@ impl Response {
     }
 
     /// Set Response's HTTP status code.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new();
+    /// res.set_status(404);
+    /// ```
     pub fn set_status(&mut self, status: u16) {
         self.parts.status =
             StatusCode::from_u16(status).expect("Given status is not a valid status code");
     }
 
     /// Set Response's HTTP status code.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new()
+    ///     .with_status(404);
+    /// ```
     pub fn with_status(mut self, status: u16) -> Self {
         self.set_status(status);
         self
@@ -911,6 +970,14 @@ impl Response {
     }
 
     /// Set Response's HTTP body.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new();
+    /// res.set_body("Hello World!");
+    /// ```
     pub fn set_body<T: Into<String>>(&mut self, body: T) {
         let body = body.into();
         let _ = self.headers_mut().insert(
@@ -922,12 +989,28 @@ impl Response {
     }
 
     /// Set Response's HTTP body.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new()
+    ///     .with_body("Hello World!");
+    /// ```
     pub fn with_body<T: Into<String>>(mut self, body: T) -> Self {
         self.set_body(body);
         self
     }
 
     /// Set Response's redirect location as status code.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new();
+    /// res.redirect("/example/moved");
+    /// ```
     pub fn redirect(&mut self, url: &'static str) {
         self.set_status(301);
         let _ = self
@@ -936,12 +1019,20 @@ impl Response {
     }
 
     /// Set Response's redirect location as status code.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new().with_redirect("/example/moved");
+    /// ```
     pub fn with_redirect(mut self, url: &'static str) -> Self {
         self.redirect(url);
         self
     }
 
-    /// Wrapper around `Request.set_body` for the HTML context type.
+    // TODO: Change this into a builder closure, with string, file, and template functions.
+    /// Wrapper around [Response.set_body](Response::set_body) for the HTML context type.
     pub fn html<T: Into<String>>(&mut self, html: T) {
         let _ = self
             .headers_mut()
@@ -950,7 +1041,8 @@ impl Response {
         self.set_body(html);
     }
 
-    /// Wrapper around `Request.set_body` for the JS context type.
+    // TODO: Change this into a builder closure, with string and file functions.
+    /// Wrapper around [Response.set_body](Response::set_body) for the JS context type.
     pub fn js<T: Into<String>>(&mut self, js: T) {
         let _ = self.headers_mut().insert(
             header::CONTENT_TYPE,
@@ -960,7 +1052,19 @@ impl Response {
         self.set_body(js);
     }
 
-    /// Wrapper around `Request.set_body` for the JSON context type.
+    /// Wrapper around [Response.set_body](Response::set_body) for the JSON context type.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::Response;
+    /// let res = Response::new();
+    /// res.json(|j| {
+    ///     j.body(Example {
+    ///         hello: String::from("world"),
+    ///     });
+    /// });
+    /// ```
     pub fn json<T: Serialize + Send + Sync, F: Fn(&mut JsonBuilder<T>)>(&mut self, json: F) {
         let mut builder = JsonBuilder::new::<T>();
 
@@ -975,6 +1079,22 @@ impl Response {
     }
 
     /// Builder function for Json responses
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ingore
+    /// #[derive(Serialize)]
+    /// struct Example {
+    ///     hello: String,
+    /// }
+    ///
+    /// let res = Response::new()
+    ///     .with_json(|j| {
+    ///         j.body(Example {
+    ///             hello: String::from("world"),
+    ///         });
+    ///     });
+    /// ```
     pub fn with_json<T: Serialize + Send + Sync, F: Fn(&mut JsonBuilder<T>)>(
         mut self,
         json: F,
@@ -983,7 +1103,7 @@ impl Response {
         self
     }
 
-    /// Transform the Response intot a Hyper Response.
+    /// Transform the Response into a Hyper Response.
     fn into_hyper(self) -> hyper::Response<Body> {
         hyper::Response::from_parts(self.parts, self.body)
     }
@@ -998,37 +1118,37 @@ impl Default for Response {
 
 /// A builder for Json responses.
 ///
-/// Do not directly use
+/// Do not directly use.
 pub struct JsonBuilder<T: Serialize + Send + Sync> {
     /// Json response wrapper to be sent.
     wrapper: Wrapper<T>,
 }
 
 impl JsonBuilder<()> {
-    /// Creates a JsonBuilder with given type.
+    /// Creates a [JsonBuilder](JsonBuilder) with given type.
     fn new<T: Serialize + Send + Sync>() -> JsonBuilder<T> {
         JsonBuilder::default()
     }
 }
 
 impl<T: Serialize + Send + Sync> JsonBuilder<T> {
-    /// Set the body of the wrapper
+    /// Set the body of the wrapper.
     pub fn body(&mut self, body: T) {
         self.wrapper.set_result(body);
     }
 
-    /// Set the body of the wrapper
+    /// Set the body of the wrapper.
     pub fn with_body(mut self, body: T) -> Self {
         self.body(body);
         self
     }
 
-    /// Added an error message to the wrapper
+    /// Added an error message to the wrapper.
     pub fn error(&mut self, message: &str) {
         self.wrapper.add_message(message);
     }
 
-    /// Added an error message to the wrapper
+    /// Added an error message to the wrapper.
     pub fn errors(&mut self, messages: Vec<&str>) {
         for message in messages {
             self.wrapper.add_message(message);
@@ -1037,14 +1157,14 @@ impl<T: Serialize + Send + Sync> JsonBuilder<T> {
 
     /// Set the status code of the Json response.
     ///
-    /// This can be gotten with `StatusCode.as_u16`.
+    /// This can be gotten with [StatusCode.as_u16](StatusCode::as_u16).
     pub fn code(&mut self, status: u16) {
         self.wrapper.set_code(status);
     }
 
     /// Set the status code of the Json response.
     ///
-    /// This can be gotten with `StatusCode.as_u16`.
+    /// This can be gotten with [StatusCode.as_u16](StatusCode::as_u16).
     pub fn with_code(mut self, status: u16) -> Self {
         self.code(status);
         self
@@ -1052,14 +1172,14 @@ impl<T: Serialize + Send + Sync> JsonBuilder<T> {
 
     /// Set the status string of the Json response.
     ///
-    /// This can be gotten with `StatusCode.as_str`.
+    /// This can be gotten with [StatusCode.as_str](StatusCode::as_str).
     pub fn status(&mut self, status: &str) {
         self.wrapper.set_status(status);
     }
 
     /// Set the status string of the Json response.
     ///
-    /// This can be gotten with `StatusCode.as_str`.
+    /// This can be gotten with [StatusCode.as_str](StatusCode::as_str).
     pub fn with_status(mut self, status: &str) -> Self {
         self.status(status);
         self
@@ -1128,7 +1248,7 @@ pub struct Request {
 }
 
 impl Request {
-    /// Constructs a new `Request`
+    /// Constructs a new [Request](Request).
     pub fn new(body: Body, parts: request::Parts) -> Self {
         Self { body, parts }
     }
@@ -1159,7 +1279,7 @@ impl Request {
     }
 
     /// Return Request body.
-    pub fn body(&mut self) -> Body {
-        ::std::mem::replace(&mut self.body, Body::empty())
+    pub fn body(&self) -> &Body {
+        &self.body
     }
 }

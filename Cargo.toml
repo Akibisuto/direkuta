@@ -22,6 +22,7 @@ include = [
 
 [badges]
 gitlab = { repository = "akibisuto/direkuta", branch = "master" }
+maintenance = { status = "actively-developed" }
 
 [dependencies]
 futures = "0.1"

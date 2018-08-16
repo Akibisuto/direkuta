@@ -289,7 +289,7 @@ pub struct Logger {}
 impl Logger {
     /// Constructs a new `Logger`
     pub fn new() -> Self {
-        Self {}
+        Logger::default()
     }
 }
 
@@ -300,6 +300,12 @@ impl Middle for Logger {
 
     fn after(&self, req: &Request, res: &Response) {
         println!("[{}] `{}`", res.status(), req.uri());
+    }
+}
+
+impl Default for Logger {
+    fn default() -> Logger {
+        Logger {}
     }
 }
 
@@ -375,7 +381,7 @@ impl State {
     /// If you do not know if the type exists use `try_get`.
     pub fn get<T: Any + Send + Sync + 'static>(&self) -> &T {
         self.try_get::<T>()
-            .expect(&format!("Key not found in state: {:?}", &TypeId::of::<T>()))
+            .unwrap_or_else(|| panic!("Key not found in state: {:?}", &TypeId::of::<T>()))
     }
 }
 
@@ -601,7 +607,7 @@ impl RouteBuilder {
         let pattern = Regex::new(&pattern).expect("Pattern does not contain valid regex");
 
         let mut builder = RoutePathBuilder {
-            pattern: pattern,
+            pattern,
             routes: HashMap::new(),
         };
 
@@ -825,9 +831,9 @@ fn get_owned_captures(re: &Regex, path: &str) -> Option<Captures> {
 fn normalize_pattern(pattern: &str) -> Cow<str> {
     let pattern = pattern
         .trim()
-        .trim_left_matches("^")
-        .trim_right_matches("$")
-        .trim_right_matches("/");
+        .trim_left_matches('^')
+        .trim_right_matches('$')
+        .trim_right_matches('/');
     match pattern {
         "" => "^/$".into(),
         s => format!("^{}/?$", s).into(),

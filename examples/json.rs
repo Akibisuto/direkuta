@@ -14,11 +14,9 @@ fn main() {
         .route(|r| {
             r.get("/", |_, _, _| {
                 Response::new().with_json(|j| {
-                    let hello = Example {
+                    j.body(Example {
                         hello: String::from("world"),
-                    };
-
-                    j.body(hello);
+                    });
                 })
             });
         }).run("0.0.0.0:3000");

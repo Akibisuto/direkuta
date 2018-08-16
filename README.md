@@ -2,11 +2,14 @@
 
 Direkuta is a REST focused web framework for Rust. It is wrapped over top of Hyper and includes state, middleware, and routing (with parameters!).
 
+**!!Direkuta requires Rust *Stable* 1.28 or higher!!**
+
 **!!!Please note that Direkuta is not yet production ready, but can still be used!!!**
 
 *Direkuta's api could change, but I wouldn't expect much to (at most the router will change).*
 
 ## Examples
+
 Below is a simple "Hello World!" example, this was used to test benchmarks.
 
 ```rust
@@ -23,30 +26,33 @@ fn main() {
 ```
 
 ## Preformance
-All ran on an Intel Xeon E7 8880 (I think, its what ever Cloud9 uses).
+
+All ran on an Intel i3 8100 @ 3.60GHz.
 
 Hyper Hello Example (Release):
-```
+
+```console
 $ wrk -t20 -c400 -d10s http://0.0.0.0:3000/
 Running 10s test @ http://0.0.0.0:3000/
   20 threads and 400 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    44.75ms   54.83ms 361.28ms   78.74%
-    Req/Sec     1.28k   584.46     4.57k    77.57%
-  254404 requests in 10.16s, 21.35MB read
-Requests/sec:  25034.94
-Transfer/sec:      2.10MB
+    Latency     8.65ms    5.94ms  41.92ms   67.63%
+    Req/Sec     1.24k   252.08     3.20k    69.49%
+  247483 requests in 10.09s, 20.77MB read
+Requests/sec:  24537.52
+Transfer/sec:      2.06MB
 ```
 
 Direkuta (Release):
-```
+
+```console
 $ wrk -t20 -c400 -d10s http://0.0.0.0:8080/
-Running 10s test @ http://0.0.0.0:8080/
+Running 10s test @ http://0.0.0.0:3000/
   20 threads and 400 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    46.91ms   55.96ms 198.33ms   78.28%
-    Req/Sec     1.08k   485.42     6.21k    82.61%
-  219469 requests in 10.17s, 37.26MB read
-Requests/sec:  21581.76
-Transfer/sec:      3.66MB
+    Latency     9.17ms    5.97ms  41.94ms   68.59%
+    Req/Sec     1.18k   218.47     2.79k    69.75%
+  234837 requests in 10.10s, 19.71MB read
+Requests/sec:  23254.98
+Transfer/sec:      1.95MB
 ```

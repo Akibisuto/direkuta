@@ -41,6 +41,10 @@ name = "captures"
 path = "examples/captures.rs"
 
 [[example]]
+name = "headers"
+path = "examples/headers.rs"
+
+[[example]]
 name = "hello"
 path = "examples/hello.rs"
 

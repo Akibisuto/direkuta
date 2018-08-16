@@ -47,8 +47,8 @@ use futures::{future, Future};
 use http::{request, response};
 pub use hyper::header::{self, HeaderMap, HeaderValue};
 use hyper::service::{NewService, Service};
-use hyper::{rt, Method, Server, Uri, Version};
-pub use hyper::{Body, StatusCode};
+use hyper::{rt, Server, Uri, Version};
+pub use hyper::{Body, Method, StatusCode};
 use regex::Regex;
 use serde::Serialize;
 
@@ -918,7 +918,7 @@ impl Response {
 
     /// Set Response's HTTP headers.
     pub fn set_headers(&mut self, headers: HeaderMap<HeaderValue>) {
-        self.parts.headers = headers;
+        self.parts.headers.extend(headers);
     }
 
     /// Return Response HTTP status code.
@@ -1282,4 +1282,42 @@ impl Request {
     pub fn body(&self) -> &Body {
         &self.body
     }
+}
+
+/// Creates a [HeaderMap](HeaderMap) from a list of key-value pairs.
+///
+/// # Examples
+///
+/// ```rust
+/// #[macro_use] extern create direkuta;
+///
+/// # fn main() {
+/// Direkuta::new()
+///     .route(|r| {
+///         r.route(Method::GET, "/", |_, _, _| {
+///             let res = Response::new().with_body("Hello World!");
+///             res.set_headers(headermap! {
+///                 header::CONTENT_TYPE => "text/plain",
+///             });
+///             res
+///         });
+///     });
+/// # }
+/// ```
+#[macro_export]
+macro_rules! headermap {
+    (@single $($x:tt)*) => (());
+    (@count $($rest:expr),*) => (<[()]>::len(&[$(headermap!(@single $rest)),*]));
+
+    ($($key:expr => $value:expr,)+) => { headermap!($($key => $value),+) };
+    ($($key:expr => $value:expr),*) => {
+        {
+            let _cap = headermap!(@count $($key),*);
+            let mut _map = ::direkuta::HeaderMap::with_capacity(_cap);
+            $(
+                let _ = _map.insert($key, ::direkuta::HeaderValue::from_static($value));
+            )*
+            _map
+        }
+    };
 }

@@ -29,6 +29,7 @@
 extern crate futures;
 extern crate http;
 extern crate hyper;
+extern crate indexmap;
 extern crate regex;
 extern crate serde;
 #[macro_use]
@@ -40,7 +41,6 @@ extern crate tera;
 
 use std::any::{Any, TypeId};
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -52,6 +52,7 @@ pub use hyper::header::{self, HeaderMap, HeaderValue};
 use hyper::service::{NewService, Service};
 use hyper::{rt, Server, Uri, Version};
 pub use hyper::{Body, Method, StatusCode};
+use indexmap::IndexMap;
 use regex::Regex;
 use serde::Serialize;
 
@@ -63,7 +64,7 @@ pub struct Direkuta {
     /// Store state as its own type.
     state: Arc<State>,
     /// Stores middleware, to be later used in [Service::call](Service::call).
-    middle: Arc<HashMap<TypeId, Box<Middle + Send + Sync + 'static>>>,
+    middle: Arc<IndexMap<TypeId, Box<Middle + Send + Sync + 'static>>>,
     /// The router, it knows where a url is meant to go.
     routes: Arc<RouteRecognizer>,
 }
@@ -137,7 +138,7 @@ impl Direkuta {
     /// ```
     pub fn route<R: Fn(&mut RouteBuilder) + Send + Sync + 'static>(mut self, route: R) -> Self {
         let mut route_builder = RouteBuilder {
-            routes: HashMap::new(),
+            routes: IndexMap::new(),
         };
 
         route(&mut route_builder);
@@ -186,9 +187,9 @@ impl Default for Direkuta {
 
         Self {
             state: Arc::new(state),
-            middle: Arc::new(HashMap::new()),
+            middle: Arc::new(IndexMap::new()),
             routes: Arc::new(RouteRecognizer {
-                routes: HashMap::new(),
+                routes: IndexMap::new(),
             }),
         }
     }
@@ -313,7 +314,7 @@ impl Default for Logger {
 ///
 /// Stored state cannot be dynamically create and must be static.
 pub struct State {
-    inner: HashMap<TypeId, Box<Any + Send + Sync + 'static>>,
+    inner: IndexMap<TypeId, Box<Any + Send + Sync + 'static>>,
 }
 
 impl State {
@@ -401,7 +402,7 @@ impl State {
 impl Default for State {
     fn default() -> State {
         State {
-            inner: HashMap::new(),
+            inner: IndexMap::new(),
         }
     }
 }
@@ -415,7 +416,7 @@ struct Route {
 ///
 /// This is not to be used directly, it is only used for [Direkuta.route](Direkuta::route).
 pub struct RouteBuilder {
-    routes: HashMap<Method, Vec<Route>>,
+    routes: IndexMap<Method, Vec<Route>>,
 }
 
 impl RouteBuilder {
@@ -631,7 +632,7 @@ impl RouteBuilder {
 
         let mut builder = RoutePathBuilder {
             pattern,
-            routes: HashMap::new(),
+            routes: IndexMap::new(),
         };
 
         handler(&mut builder);
@@ -647,7 +648,7 @@ impl RouteBuilder {
 /// This is not to be used directly, it is only used for [RouteBuilder.path](RouteBuilder::path).
 pub struct RoutePathBuilder {
     pattern: Regex,
-    routes: HashMap<Method, Vec<Route>>,
+    routes: IndexMap<Method, Vec<Route>>,
 }
 
 impl RoutePathBuilder {
@@ -685,7 +686,7 @@ impl RoutePathBuilder {
     ///
     /// After this is called nothing should be add to the [RouteBuilder](RouteBuilder),
     /// as it will not update.
-    fn finish(self) -> HashMap<Method, Vec<Route>> {
+    fn finish(self) -> IndexMap<Method, Vec<Route>> {
         self.routes
     }
 
@@ -827,7 +828,7 @@ type Captures = Vec<(Option<String>, String)>;
 
 /// Route handler.
 struct RouteRecognizer {
-    routes: HashMap<Method, Vec<Route>>,
+    routes: IndexMap<Method, Vec<Route>>,
 }
 
 impl RouteRecognizer {
@@ -1068,10 +1069,9 @@ impl Response {
     /// });
     /// ```
     pub fn css<F: Fn(&mut CssBuilder)>(&mut self, css: F) {
-        let _ = self.headers_mut().insert(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("text/css"),
-        );
+        let _ = self
+            .headers_mut()
+            .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/css"));
 
         let mut builder = CssBuilder::new();
 
@@ -1216,13 +1216,14 @@ impl CssBuilder {
         CssBuilder::default()
     }
 
-    fn get_body(&self) -> String {
-        self.inner.clone()
+    fn get_body(&self) -> &str {
+        self.inner.as_str()
     }
 
     /// Load from [File](std::fs::File).
     pub fn file(&mut self, mut file: File) {
-        let _ = file.read_to_string(&mut self.inner)
+        let _ = file
+            .read_to_string(&mut self.inner)
             .expect("Unable to write file contents");
     }
 
@@ -1243,8 +1244,8 @@ impl CssBuilder {
         match File::open(path) {
             Ok(f) => {
                 self.file(f);
-            },
-            Err(_) => {},
+            }
+            Err(_) => {}
         }
     }
 }
@@ -1269,13 +1270,14 @@ impl JsBuilder {
         JsBuilder::default()
     }
 
-    fn get_body(&self) -> String {
-        self.inner.clone()
+    fn get_body(&self) -> &str {
+        self.inner.as_str()
     }
 
     /// Load from [File](std::fs::File).
     pub fn file(&mut self, mut file: File) {
-        let _ = file.read_to_string(&mut self.inner)
+        let _ = file
+            .read_to_string(&mut self.inner)
             .expect("Unable to write file contents");
     }
 
@@ -1296,8 +1298,8 @@ impl JsBuilder {
         match File::open(path) {
             Ok(f) => {
                 self.file(f);
-            },
-            Err(_) => {},
+            }
+            Err(_) => {}
         }
     }
 }

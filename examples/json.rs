@@ -2,7 +2,7 @@ extern crate direkuta;
 #[macro_use]
 extern crate serde_derive;
 
-use direkuta::*;
+use direkuta::prelude::*;
 
 #[derive(Serialize)]
 struct Example {

@@ -53,10 +53,9 @@ use std::sync::Arc;
 
 use futures::{future, Future};
 use http::{request, response};
-pub use hyper::header::{self, HeaderMap, HeaderValue};
+use hyper::header::{self, HeaderMap, HeaderValue};
 use hyper::service::{NewService, Service};
-use hyper::{rt, Server, Uri, Version};
-pub use hyper::{Body, Method, StatusCode};
+use hyper::{rt, Body, Method, Server, StatusCode, Uri, Version};
 use indexmap::IndexMap;
 use regex::Regex;
 
@@ -64,7 +63,7 @@ use regex::Regex;
 use serde::Serialize;
 
 #[cfg(feature = "html")]
-pub use tera::{Context, Tera};
+use tera::{Context, Tera};
 
 /// The Direkuta web server itself.
 pub struct Direkuta {
@@ -1567,11 +1566,32 @@ macro_rules! headermap {
     ($($key:expr => $value:expr),*) => {
         {
             let _cap = headermap!(@count $($key),*);
-            let mut _map = ::direkuta::HeaderMap::with_capacity(_cap);
+            let mut _map = ::direkuta::prelude::hyper::HeaderMap::with_capacity(_cap);
             $(
-                let _ = _map.insert($key, ::direkuta::HeaderValue::from_static($value));
+                let _ = _map.insert($key, ::direkuta::prelude::hyper::HeaderValue::from_static($value));
             )*
             _map
         }
     };
+}
+
+/// Imports just the required parts of [Direkuta](Direkuta).
+pub mod prelude {
+    pub use super::{Direkuta, Logger, Middle, Request, Response};
+
+    /// Imports the required parts from [Tera](Tera).
+    ///
+    /// You'll need to import this if you want to use Tera templates.
+    pub mod html {
+        pub use tera::{Context, Tera};
+    }
+
+    /// Imports the required parts from [Hyper](Hyper).
+    ///
+    /// You'll need this if you want to create a handler that doesn't have a function
+    /// or if you want to set response Headers.
+    pub mod hyper {
+        pub use hyper::header::{self, HeaderMap, HeaderValue};
+        pub use hyper::Method;
+    }
 }

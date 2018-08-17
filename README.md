@@ -72,7 +72,8 @@ Tera is accessable through `State`, and uses the `templates/**/*` folder for tem
 ```rust
 extern crate direkuta;
 
-use direkuta::*;
+use direkuta::prelude::*;
+use direkuta::prelude::html::*;
 
 fn main() {
     Direkuta::new()
@@ -96,7 +97,7 @@ extern crate direkuta;
 #[macro_use]
 extern crate serde_derive;
 
-use direkuta::*;
+use direkuta::prelude::*;
 
 #[derive(Serialize)]
 struct Example {

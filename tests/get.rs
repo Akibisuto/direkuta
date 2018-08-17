@@ -4,7 +4,7 @@ extern crate yukikaze;
 
 use std::{thread, time};
 
-use direkuta::{Direkuta, Response};
+use direkuta::prelude::*;
 use yukikaze::client::{Client, HttpClient, Request};
 
 fn server() {

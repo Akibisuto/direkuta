@@ -4,6 +4,7 @@
 //!
 //! ```rust,ignore
 //! # use direkuta::{Direkuta, Response};
+//! // Not tested due to the fact that its a web server.
 //! Direkuta::new()
 //!     .route(|r| {
 //!         r.get("/", |_, _, _| {
@@ -159,6 +160,7 @@ impl Direkuta {
     ///
     /// ```rust,ignore
     /// # use direkuta::Direkuta;
+    /// // Not tested due to the fact that its a web server.
     /// Direkuta::new()
     ///     .run("0.0.0.0:3000");
     /// ```

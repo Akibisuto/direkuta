@@ -1,8 +1,9 @@
 image: "rust:latest"
 
 stages:
+- info
 - test
-# - doc
+#- deps
 - build
 
 cache:
@@ -14,16 +15,22 @@ cache:
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
 
+info:
+  stage: info
+  script:
+  - cargo test
+
+test:
+  stage: test
+  script:
+  - cargo test
+
+#deps:
+#  stage: deps
+#  script:
+#  - cargo build
+
 build:
   stage: build
   script:
-  - rustc --version
-  - cargo --version
   - cargo build
-
-build:
-  stage: test
-  script:
-  - rustc --version
-  - cargo --version
-  - cargo test

@@ -62,3 +62,70 @@ Transfer/sec:      1.98MB
 Direkuta supports middleware that impliment the `Middle` trait. Direkuta comes with an example Logger middleware that can be used.
 
 Each middleware has two states, before the response was created, and after the response has been created.
+
+## Helpers
+
+Direkuta comes with two features (enabled by default), HTML template support with [Tera](https://github.com/Keats/tera), and JSON support with [Serde](https://github.com/serde-rs/serde) adn [Serde JSON](https://github.com/serde-rs/json).
+
+Tera is accessable through `State`, and uses the `templates/**/*` folder for tempaltes.
+
+```rust
+extern crate direkuta;
+
+use direkuta::*;
+
+fn main() {
+    Direkuta::new()
+        .route(|r| {
+            r.get("/", |_, s, _| {
+                Response::new().with_body(s
+                    .get::<Tera>()
+                    .render(Context::new(), "index.html")
+                    .unwrap())
+            });
+        }).run("0.0.0.0:3000");
+}
+```
+
+JSON responses on the other hand are encapsulated with a `wrapper`.
+
+Example (from `/examples`):
+
+```rust
+extern crate direkuta;
+#[macro_use]
+extern crate serde_derive;
+
+use direkuta::*;
+
+#[derive(Serialize)]
+struct Example {
+    hello: String,
+}
+
+fn main() {
+    Direkuta::new()
+        .route(|r| {
+            r.get("/", |_, _, _| {
+                Response::new().with_json(|j| {
+                    j.body(Example {
+                        hello: String::from("world"),
+                    });
+                })
+            });
+        }).run("0.0.0.0:3000");
+}
+```
+
+JSON Response:
+
+```json
+{
+  "code": 200,
+  "messages": [],
+  "result": {
+    "hello": "world"
+  },
+  "status": "OK"
+}
+```

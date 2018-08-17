@@ -15,7 +15,7 @@ Below is a simple "Hello World!" example, this was used to test benchmarks.
 ```rust
 extern crate direkuta;
 
-use direkuta::*;
+use direkuta::prelude::*;
 
 fn main() {
     Direkuta::new()

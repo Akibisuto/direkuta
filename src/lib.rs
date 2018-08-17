@@ -2,7 +2,7 @@
 //!
 //! # Examples
 //!
-//! ```rust
+//! ```rust,ignore
 //! # use direkuta::{Direkuta, Response};
 //! Direkuta::new()
 //!     .route(|r| {
@@ -157,7 +157,7 @@ impl Direkuta {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// # use direkuta::Direkuta;
     /// Direkuta::new()
     ///     .run("0.0.0.0:3000");
@@ -256,7 +256,7 @@ impl Service for Direkuta {
 /// # Examples
 ///
 /// ```rust
-/// # use direkuta::Middle;
+/// # use direkuta::{Middle, Request, Response};
 /// struct Logger {}
 ///
 /// impl Logger {
@@ -266,14 +266,15 @@ impl Service for Direkuta {
 /// }
 ///
 /// impl Middle for Logger {
-///     fn before(&self, req: &Request) {
+///     fn before(&self, req: &mut Request) {
 ///         println!("[{}] `{}`", req.method(), req.uri());
 ///     }
 ///
-///     fn after(&self, req: &Request, res: & Response) {
+///     fn after(&self, req: &mut Request, res: &mut Response) {
 ///         println!("[{}] `{}`", res.status(), req.uri());
 ///     }
 /// }
+/// ```
 pub trait Middle {
     /// Called before a request is sent through [RouteRecognizer](RouteRecognizer)
     fn before(&self, &mut Request);
@@ -344,7 +345,7 @@ impl State {
     ///
     /// ```rust
     /// # use direkuta::State;
-    /// let state = State::new();
+    /// let mut state = State::new();
     ///
     /// state.set(String::from("Hello World!"));
     /// ```
@@ -360,7 +361,7 @@ impl State {
     ///
     /// ```rust
     /// # use direkuta::State;
-    /// let state = State::new();
+    /// let mut state = State::new();
     ///
     /// state.set(String::from("Hello World!"));
     ///
@@ -387,7 +388,7 @@ impl State {
     ///
     /// ```rust
     /// # use direkuta::State;
-    /// let state = State::new();
+    /// let mut state = State::new();
     ///
     /// state.set(String::from("Hello World!"));
     ///
@@ -597,6 +598,7 @@ impl RouteBuilder {
     /// # Examples
     ///
     /// ```rust
+    /// # use direkuta::{Direkuta, Response};
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.options("/", |_, _, _| {
@@ -957,7 +959,7 @@ impl Response {
     ///
     /// ```rust
     /// # use direkuta::{header, HeaderValue, Response};
-    /// let res = Response::new();
+    /// let mut res = Response::new();
     /// res.headers_mut().insert(
     ///     header::CONTENT_TYPE,
     ///     HeaderValue::from_static("text/plain")
@@ -988,7 +990,7 @@ impl Response {
     ///
     /// ```rust
     /// # use direkuta::Response;
-    /// let res = Response::new();
+    /// let mut res = Response::new();
     /// res.set_status(404);
     /// ```
     pub fn set_status(&mut self, status: u16) {
@@ -1026,7 +1028,7 @@ impl Response {
     ///
     /// ```rust
     /// # use direkuta::Response;
-    /// let res = Response::new();
+    /// let mut res = Response::new();
     /// res.set_body("Hello World!");
     /// ```
     pub fn set_body<T: Into<String>>(&mut self, body: T) {
@@ -1059,7 +1061,7 @@ impl Response {
     ///
     /// ```rust
     /// # use direkuta::Response;
-    /// let res = Response::new();
+    /// let mut res = Response::new();
     /// res.redirect("/example/moved");
     /// ```
     pub fn redirect(&mut self, url: &'static str) {
@@ -1099,7 +1101,7 @@ impl Response {
     ///
     /// ```rust
     /// # use direkuta::Response;
-    /// let res = Response::new();
+    /// let mut res = Response::new();
     /// res.css(|c| {
     ///     c.path("/static/app.css");
     /// });
@@ -1138,9 +1140,9 @@ impl Response {
     ///
     /// ```rust
     /// # use direkuta::Response;
-    /// let res = Response::new();
+    /// let mut res = Response::new();
     /// res.js(|j| {
-    ///     js.path("/static/app.js");
+    ///     j.path("/static/app.js");
     /// });
     /// ```
     pub fn js<F: Fn(&mut JsBuilder)>(&mut self, js: F) {
@@ -1164,7 +1166,7 @@ impl Response {
     /// # use direkuta::Response;
     /// let res = Response::new()
     ///     .with_js(|j| {
-    ///         js.path("/static/app.js");
+    ///         j.path("/static/app.js");
     ///     });
     /// ```
     pub fn with_js<F: Fn(&mut JsBuilder)>(mut self, js: F) -> Self {
@@ -1176,18 +1178,24 @@ impl Response {
     ///
     /// # Examples
     ///
-    /// ```rust,ingore
+    /// ```rust
+    /// # extern crate direkuta;
+    /// # #[macro_use] extern crate serde_derive;
+    ///
+    /// use direkuta::Response;
+    ///
     /// #[derive(Serialize)]
     /// struct Example {
     ///     hello: String,
     /// }
-    ///
-    /// let res = Response::new();
+    /// # fn main() {
+    /// let mut res = Response::new();
     /// res.json(|j| {
     ///     j.body(Example {
     ///         hello: String::from("world"),
     ///     });
     /// });
+    /// # }
     /// ```
     #[cfg(feature = "json")]
     pub fn json<T: Serialize + Send + Sync, F: Fn(&mut JsonBuilder<T>)>(&mut self, json: F) {
@@ -1207,18 +1215,24 @@ impl Response {
     ///
     /// # Examples
     ///
-    /// ```rust,ingore
+    /// ```rust
+    /// # extern crate direkuta;
+    /// # #[macro_use] extern crate serde_derive;
+    ///
+    /// use direkuta::Response;
+    ///
     /// #[derive(Serialize)]
     /// struct Example {
     ///     hello: String,
     /// }
-    ///
+    /// # fn main() {
     /// let res = Response::new()
     ///     .with_json(|j| {
     ///         j.body(Example {
     ///             hello: String::from("world"),
     ///         });
     ///     });
+    /// # }
     /// ```
     #[cfg(feature = "json")]
     pub fn with_json<T: Serialize + Send + Sync, F: Fn(&mut JsonBuilder<T>)>(
@@ -1271,9 +1285,9 @@ impl CssBuilder {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```rust,no_run
     /// # use direkuta::Response;
-    /// let res = Response::new();
+    /// let mut res = Response::new();
     /// res.css(|c| {
     ///     c.path("/static/app.css");
     /// });
@@ -1324,7 +1338,7 @@ impl JsBuilder {
     ///
     /// ```rust
     /// # use direkuta::Response;
-    /// let res = Response::new();
+    /// let mut res = Response::new();
     /// res.js(|j| {
     ///     j.path("/static/app.js");
     /// });
@@ -1478,8 +1492,8 @@ impl<T: Serialize + Send + Sync> Default for Wrapper<T> {
 /// A wrapper around [Hyper Request](hyper::Request).
 #[derive(Debug)]
 pub struct Request {
-    pub(crate) body: Body,
-    pub(crate) parts: request::Parts,
+    body: Body,
+    parts: request::Parts,
 }
 
 impl Request {
@@ -1525,13 +1539,15 @@ impl Request {
 ///
 /// ```rust
 /// #[macro_use]
-/// extern create direkuta;
+/// extern crate direkuta;
+///
+/// use direkuta::{header, Direkuta, Response};
 ///
 /// # fn main() {
 /// Direkuta::new()
 ///     .route(|r| {
-///         r.route(Method::GET, "/", |_, _, _| {
-///             let res = Response::new().with_body("Hello World!");
+///         r.get("/", |_, _, _| {
+///             let mut res = Response::new().with_body("Hello World!");
 ///             res.set_headers(headermap! {
 ///                 header::CONTENT_TYPE => "text/plain",
 ///             });

@@ -1,7 +1,7 @@
 image: "rust:latest"
 
 stages:
-# - test
+- test
 # - doc
 - build
 
@@ -20,3 +20,10 @@ build:
   - rustc --version
   - cargo --version
   - cargo build
+
+build:
+  stage: test
+  script:
+  - rustc --version
+  - cargo --version
+  - cargo test

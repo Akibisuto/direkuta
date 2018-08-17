@@ -56,3 +56,9 @@ Running 10s test @ http://0.0.0.0:3000/
 Requests/sec:  23581.02
 Transfer/sec:      1.98MB
 ```
+
+## Middleware
+
+Direkuta supports middleware that impliment the `Middle` trait. Direkuta comes with an example Logger middleware that can be used.
+
+Each middleware has two states, before the response was created, and after the response has been created.

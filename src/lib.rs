@@ -31,12 +31,16 @@ extern crate http;
 extern crate hyper;
 extern crate indexmap;
 extern crate regex;
+
+#[cfg(feature = "json")]
 extern crate serde;
+#[cfg(feature = "json")]
 #[macro_use]
 extern crate serde_derive;
+#[cfg(feature = "json")]
 extern crate serde_json;
 
-#[cfg(feature = "template")]
+#[cfg(feature = "html")]
 extern crate tera;
 
 use std::any::{Any, TypeId};
@@ -54,9 +58,11 @@ use hyper::{rt, Server, Uri, Version};
 pub use hyper::{Body, Method, StatusCode};
 use indexmap::IndexMap;
 use regex::Regex;
+
+#[cfg(feature = "json")]
 use serde::Serialize;
 
-#[cfg(feature = "template")]
+#[cfg(feature = "html")]
 pub use tera::{Context, Tera};
 
 /// The Direkuta web server itself.
@@ -176,7 +182,7 @@ impl Default for Direkuta {
     fn default() -> Self {
         let mut state = State::new();
 
-        #[cfg(feature = "template")]
+        #[cfg(feature = "html")]
         state.set(match Tera::parse("templates/**/*") {
             Ok(t) => t,
             Err(e) => {
@@ -222,13 +228,13 @@ impl Service for Direkuta {
         let method = req.method().clone();
         let path = req.uri().path().to_owned();
         let (parts, body) = req.into_parts();
-        let req = Request::new(body, parts);
+        let mut req = Request::new(body, parts);
 
         for (_, before) in self.middle.iter() {
-            before.before(&req);
+            before.before(&mut req);
         }
 
-        let res: Response = match self.routes.recognize(&method, &path) {
+        let mut res: Response = match self.routes.recognize(&method, &path) {
             Ok((handler, cap)) => handler(&req, &self.state.clone(), &cap),
             Err(code) => {
                 let mut res = Response::new();
@@ -238,7 +244,7 @@ impl Service for Direkuta {
         };
 
         for (_, after) in self.middle.iter() {
-            after.after(&req, &res);
+            after.after(&mut req, &mut res);
         }
 
         Box::new(future::ok(res.into_hyper()))
@@ -270,9 +276,9 @@ impl Service for Direkuta {
 /// }
 pub trait Middle {
     /// Called before a request is sent through [RouteRecognizer](RouteRecognizer)
-    fn before(&self, &Request);
+    fn before(&self, &mut Request);
     /// Called after a request is sent through [RouteRecognizer](RouteRecognizer)
-    fn after(&self, &Request, &Response);
+    fn after(&self, &mut Request, &mut Response);
 }
 
 /// A simple logger middleware.
@@ -295,11 +301,11 @@ impl Logger {
 }
 
 impl Middle for Logger {
-    fn before(&self, req: &Request) {
+    fn before(&self, req: &mut Request) {
         println!("[{}] `{}`", req.method(), req.uri());
     }
 
-    fn after(&self, req: &Request, res: &Response) {
+    fn after(&self, req: &mut Request, res: &mut Response) {
         println!("[{}] `{}`", res.status(), req.uri());
     }
 }
@@ -310,7 +316,7 @@ impl Default for Logger {
     }
 }
 
-/// A wrapper around HashMap<TypeId, Any>, used to store [Direkuta](Direkuta) state.
+/// A wrapper around [HashMap](std::collections::HashMap)<[TypeId](std::any::TypeId), [Any](std::any::Any)>, used to store [Direkuta](Direkuta) state.
 ///
 /// Stored state cannot be dynamically create and must be static.
 pub struct State {
@@ -407,8 +413,10 @@ impl Default for State {
     }
 }
 
+type Handler = Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static;
+
 struct Route {
-    handler: Box<Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>,
+    handler: Box<Handler>,
     pattern: Regex,
 }
 
@@ -622,12 +630,12 @@ impl RouteBuilder {
     ///         });
     ///     });
     /// ```
-    pub fn path<S: AsRef<str>, H: Fn(&mut RoutePathBuilder) + Send + Sync + 'static>(
+    pub fn path<H: Fn(&mut RoutePathBuilder) + Send + Sync + 'static>(
         &mut self,
-        pattern: S,
+        pattern: &str,
         handler: H,
     ) -> &Self {
-        let pattern = normalize_pattern(pattern.as_ref());
+        let pattern = normalize_pattern(pattern);
         let pattern = Regex::new(&pattern).expect("Pattern does not contain valid regex");
 
         let mut builder = RoutePathBuilder {
@@ -821,6 +829,44 @@ impl RoutePathBuilder {
     ) -> &Self {
         self.route(Method::OPTIONS, handler)
     }
+
+    /// Create a path for multiple request types.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::{Direkuta, Response};
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.path("/parent", |r| {
+    ///             r.path("/child", |r| {
+    ///                 r.get(|_, _, _| {
+    ///                     Response::new().with_body("Hello World!")
+    ///                 });
+    ///             });
+    ///         });
+    ///     });
+    /// ```
+    pub fn path<H: Fn(&mut RoutePathBuilder) + Send + Sync + 'static>(
+        &mut self,
+        pattern: &str,
+        handler: H,
+    ) -> &Self {
+        let pattern = format!("{}{}", self.pattern, pattern);
+        let pattern = normalize_pattern(pattern.as_str());
+        let pattern = Regex::new(&pattern).expect("Pattern does not contain valid regex");
+
+        let mut builder = RoutePathBuilder {
+            pattern,
+            routes: IndexMap::new(),
+        };
+
+        handler(&mut builder);
+
+        let _ = &self.routes.extend(builder.finish());
+
+        self
+    }
 }
 
 /// A type wrapper for ease of use Captures.
@@ -833,17 +879,7 @@ struct RouteRecognizer {
 
 impl RouteRecognizer {
     /// When a request is recived this is called to find a handler.
-    fn recognize(
-        &self,
-        method: &Method,
-        path: &str,
-    ) -> Result<
-        (
-            &(Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static),
-            Captures,
-        ),
-        StatusCode,
-    > {
+    fn recognize(&self, method: &Method, path: &str) -> Result<(&Handler, Captures), StatusCode> {
         let routes = self.routes.get(method).ok_or(StatusCode::NOT_FOUND)?;
         for route in routes {
             if let Some(caps) = get_owned_captures(&route.pattern, path) {
@@ -885,11 +921,11 @@ fn normalize_pattern(pattern: &str) -> Cow<str> {
     }
 }
 
-/// A wrapper around Hyper Response.
+/// A wrapper around [Hyper Response](hyper::Response).
 #[derive(Debug)]
 pub struct Response {
-    pub(crate) body: Body,
-    pub(crate) parts: response::Parts,
+    body: Body,
+    parts: response::Parts,
 }
 
 impl Response {
@@ -1153,6 +1189,7 @@ impl Response {
     ///     });
     /// });
     /// ```
+    #[cfg(feature = "json")]
     pub fn json<T: Serialize + Send + Sync, F: Fn(&mut JsonBuilder<T>)>(&mut self, json: F) {
         let mut builder = JsonBuilder::new::<T>();
 
@@ -1183,6 +1220,7 @@ impl Response {
     ///         });
     ///     });
     /// ```
+    #[cfg(feature = "json")]
     pub fn with_json<T: Serialize + Send + Sync, F: Fn(&mut JsonBuilder<T>)>(
         mut self,
         json: F,
@@ -1241,11 +1279,8 @@ impl CssBuilder {
     /// });
     /// ```
     pub fn path<P: AsRef<Path>>(&mut self, path: P) {
-        match File::open(path) {
-            Ok(f) => {
-                self.file(f);
-            }
-            Err(_) => {}
+        if let Ok(f) = File::open(path) {
+            self.file(f);
         }
     }
 }
@@ -1295,11 +1330,8 @@ impl JsBuilder {
     /// });
     /// ```
     pub fn path<P: AsRef<Path>>(&mut self, path: P) {
-        match File::open(path) {
-            Ok(f) => {
-                self.file(f);
-            }
-            Err(_) => {}
+        if let Ok(f) = File::open(path) {
+            self.file(f);
         }
     }
 }
@@ -1315,11 +1347,13 @@ impl Default for JsBuilder {
 /// A builder for JSON responses.
 ///
 /// Do not directly use.
+#[cfg(feature = "json")]
 pub struct JsonBuilder<T: Serialize + Send + Sync> {
     /// Json response wrapper to be sent.
     wrapper: Wrapper<T>,
 }
 
+#[cfg(feature = "json")]
 impl JsonBuilder<()> {
     /// Creates a [JsonBuilder](JsonBuilder) with given type.
     fn new<T: Serialize + Send + Sync>() -> JsonBuilder<T> {
@@ -1327,6 +1361,7 @@ impl JsonBuilder<()> {
     }
 }
 
+#[cfg(feature = "json")]
 impl<T: Serialize + Send + Sync> JsonBuilder<T> {
     /// Set the body of the wrapper.
     pub fn body(&mut self, body: T) {
@@ -1386,6 +1421,7 @@ impl<T: Serialize + Send + Sync> JsonBuilder<T> {
     }
 }
 
+#[cfg(feature = "json")]
 impl<T: Serialize + Send + Sync> Default for JsonBuilder<T> {
     fn default() -> JsonBuilder<T> {
         Self {
@@ -1394,6 +1430,7 @@ impl<T: Serialize + Send + Sync> Default for JsonBuilder<T> {
     }
 }
 
+#[cfg(feature = "json")]
 #[derive(Serialize)]
 struct Wrapper<T: Serialize + Send + Sync> {
     code: u16,
@@ -1402,6 +1439,7 @@ struct Wrapper<T: Serialize + Send + Sync> {
     status: String,
 }
 
+#[cfg(feature = "json")]
 impl<T: Serialize + Send + Sync> Wrapper<T> {
     /// Constructs a new `Wrapper<T>`
     fn new() -> Wrapper<T> {
@@ -1425,6 +1463,7 @@ impl<T: Serialize + Send + Sync> Wrapper<T> {
     }
 }
 
+#[cfg(feature = "json")]
 impl<T: Serialize + Send + Sync> Default for Wrapper<T> {
     fn default() -> Wrapper<T> {
         Self {
@@ -1436,7 +1475,7 @@ impl<T: Serialize + Send + Sync> Default for Wrapper<T> {
     }
 }
 
-/// A wrapped Hyper request.
+/// A wrapper around [Hyper Request](hyper::Request).
 #[derive(Debug)]
 pub struct Request {
     pub(crate) body: Body,
@@ -1485,7 +1524,8 @@ impl Request {
 /// # Examples
 ///
 /// ```rust
-/// #[macro_use] extern create direkuta;
+/// #[macro_use]
+/// extern create direkuta;
 ///
 /// # fn main() {
 /// Direkuta::new()

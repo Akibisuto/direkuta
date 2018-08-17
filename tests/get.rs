@@ -2,7 +2,7 @@ extern crate direkuta;
 extern crate tokio;
 extern crate yukikaze;
 
-use std::{time, thread};
+use std::{thread, time};
 
 use direkuta::{Direkuta, Response};
 use yukikaze::client::{Client, HttpClient, Request};
@@ -10,12 +10,8 @@ use yukikaze::client::{Client, HttpClient, Request};
 fn server() {
     Direkuta::new()
         .route(|r| {
-            r.get("/", |_, _, _| {
-                Response::new()
-                    .with_body("Hello World!")
-            });
-        })
-        .run("0.0.0.0:3000");
+            r.get("/", |_, _, _| Response::new().with_body("Hello World!"));
+        }).run("0.0.0.0:3000");
 }
 
 #[test]
@@ -29,7 +25,9 @@ fn get_pass() {
     let mut tokio_rt = tokio::runtime::current_thread::Runtime::new().expect("To create runtime");
     let client = Client::default();
 
-    let request = Request::get("http://localhost:3000").expect("To create get request").empty();
+    let request = Request::get("http://localhost:3000")
+        .expect("To create get request")
+        .empty();
 
     let response = client.execute(request);
     let response = tokio_rt.block_on(response);

@@ -37,6 +37,7 @@ panic:
   allow_failure: true
   stage: panic
   script:
+  - export PATH="$CI_PROJECT_DIR/cargo/bin:$PATH"
   - cargo build --example hello
   - cd ./target/debug/examples
   - rustig -b ./hello

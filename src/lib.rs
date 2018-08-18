@@ -3,7 +3,7 @@
 //! # Examples
 //!
 //! ```rust,ignore
-//! # use direkuta::{Direkuta, Response};
+//! # use direkuta::prelude::*;
 //! // Not tested due to the fact that its a web server.
 //! Direkuta::new()
 //!     .route(|r| {
@@ -81,7 +81,7 @@ impl Direkuta {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Direkuta;
+    /// # use direkuta::prelude::*;
     /// Direkuta::new();
     /// ```
     pub fn new() -> Self {
@@ -93,7 +93,7 @@ impl Direkuta {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Direkuta;
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .state(String::from("Hello World!"));
     /// ```
@@ -115,7 +115,7 @@ impl Direkuta {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Logger};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .middle(Logger::new());
     /// ```
@@ -136,7 +136,7 @@ impl Direkuta {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Direkuta;
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         // handlers here
@@ -158,7 +158,7 @@ impl Direkuta {
     /// # Examples
     ///
     /// ```rust,ignore
-    /// # use direkuta::Direkuta;
+    /// # use direkuta::prelude::*;
     /// // Not tested due to the fact that its a web server.
     /// Direkuta::new()
     ///     .run("0.0.0.0:3000");
@@ -257,7 +257,7 @@ impl Service for Direkuta {
 /// # Examples
 ///
 /// ```rust
-/// # use direkuta::{Middle, Request, Response};
+/// # use direkuta::prelude::{Middle, Request, Response};
 /// struct Logger {}
 ///
 /// impl Logger {
@@ -288,7 +288,7 @@ pub trait Middle {
 /// # Examples
 ///
 /// ```rust
-/// # use direkuta::{Direkuta, Logger};
+/// # use direkuta::prelude::*;
 /// Direkuta::new()
 ///     .middle(Logger::new());
 /// ```
@@ -331,7 +331,7 @@ impl State {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::State;
+    /// # use direkuta::prelude::*;
     /// let state = State::new();
     /// ```
     pub fn new() -> Self {
@@ -361,7 +361,7 @@ impl State {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::State;
+    /// # use direkuta::prelude::*;
     /// let mut state = State::new();
     ///
     /// state.set(String::from("Hello World!"));
@@ -388,7 +388,7 @@ impl State {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::State;
+    /// # use direkuta::prelude::*;
     /// let mut state = State::new();
     ///
     /// state.set(String::from("Hello World!"));
@@ -437,7 +437,8 @@ impl RouteBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Method, Response};
+    /// # use direkuta::prelude::*;
+    /// # use direkuta::prelude::hyper::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.route(Method::GET, "/", |_, _, _| {
@@ -479,7 +480,7 @@ impl RouteBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.get("/", |_, _, _| {
@@ -503,7 +504,7 @@ impl RouteBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.post("/", |_, _, _| {
@@ -527,7 +528,7 @@ impl RouteBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.put("/", |_, _, _| {
@@ -551,7 +552,7 @@ impl RouteBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.delete("/", |_, _, _| {
@@ -575,7 +576,7 @@ impl RouteBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.head("/", |_, _, _| {
@@ -599,7 +600,7 @@ impl RouteBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.options("/", |_, _, _| {
@@ -623,7 +624,7 @@ impl RouteBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.path("/", |r| {
@@ -670,7 +671,8 @@ impl RoutePathBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Method, Response};
+    /// # use direkuta::prelude::*;
+    /// # use direkuta::prelude::hyper::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.path("/", |r| {
@@ -706,7 +708,7 @@ impl RoutePathBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.path("/", |r| {
@@ -728,7 +730,7 @@ impl RoutePathBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.path("/", |r| {
@@ -750,7 +752,7 @@ impl RoutePathBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.path("/", |r| {
@@ -772,7 +774,7 @@ impl RoutePathBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.path("/", |r| {
@@ -794,7 +796,7 @@ impl RoutePathBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.path("/", |r| {
@@ -816,7 +818,7 @@ impl RoutePathBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.path("/", |r| {
@@ -838,7 +840,7 @@ impl RoutePathBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{Direkuta, Response};
+    /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.path("/parent", |r| {
@@ -937,7 +939,7 @@ impl Response {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let res = Response::new();
     /// ```
     pub fn new() -> Self {
@@ -959,7 +961,8 @@ impl Response {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::{header, HeaderValue, Response};
+    /// # use direkuta::prelude::*;
+    /// # use direkuta::prelude::hyper::*;
     /// let mut res = Response::new();
     /// res.headers_mut().insert(
     ///     header::CONTENT_TYPE,
@@ -990,7 +993,7 @@ impl Response {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let mut res = Response::new();
     /// res.set_status(404);
     /// ```
@@ -1004,7 +1007,7 @@ impl Response {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let res = Response::new()
     ///     .with_status(404);
     /// ```
@@ -1028,7 +1031,7 @@ impl Response {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let mut res = Response::new();
     /// res.set_body("Hello World!");
     /// ```
@@ -1047,7 +1050,7 @@ impl Response {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let res = Response::new()
     ///     .with_body("Hello World!");
     /// ```
@@ -1061,7 +1064,7 @@ impl Response {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let mut res = Response::new();
     /// res.redirect("/example/moved");
     /// ```
@@ -1077,7 +1080,7 @@ impl Response {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let res = Response::new()
     ///     .with_redirect("/example/moved");
     /// ```
@@ -1101,7 +1104,7 @@ impl Response {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let mut res = Response::new();
     /// res.css(|c| {
     ///     c.path("/static/app.css");
@@ -1124,7 +1127,7 @@ impl Response {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let res = Response::new()
     ///     .with_css(|c| {
     ///         c.path("/static/app.css");
@@ -1140,7 +1143,7 @@ impl Response {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let mut res = Response::new();
     /// res.js(|j| {
     ///     j.path("/static/app.js");
@@ -1164,7 +1167,7 @@ impl Response {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let res = Response::new()
     ///     .with_js(|j| {
     ///         j.path("/static/app.js");
@@ -1183,7 +1186,7 @@ impl Response {
     /// # extern crate direkuta;
     /// # #[macro_use] extern crate serde_derive;
     ///
-    /// use direkuta::Response;
+    /// use direkuta::prelude::*;
     ///
     /// #[derive(Serialize)]
     /// struct Example {
@@ -1220,7 +1223,7 @@ impl Response {
     /// # extern crate direkuta;
     /// # #[macro_use] extern crate serde_derive;
     ///
-    /// use direkuta::Response;
+    /// use direkuta::prelude::*;
     ///
     /// #[derive(Serialize)]
     /// struct Example {
@@ -1287,7 +1290,7 @@ impl CssBuilder {
     /// # Examples
     ///
     /// ```rust,no_run
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let mut res = Response::new();
     /// res.css(|c| {
     ///     c.path("/static/app.css");
@@ -1338,7 +1341,7 @@ impl JsBuilder {
     /// # Examples
     ///
     /// ```rust
-    /// # use direkuta::Response;
+    /// # use direkuta::prelude::*;
     /// let mut res = Response::new();
     /// res.js(|j| {
     ///     j.path("/static/app.js");
@@ -1542,7 +1545,8 @@ impl Request {
 /// #[macro_use]
 /// extern crate direkuta;
 ///
-/// use direkuta::{header, Direkuta, Response};
+/// use direkuta::prelude::*;
+/// use direkuta::prelude::hyper::*;
 ///
 /// # fn main() {
 /// Direkuta::new()
@@ -1577,7 +1581,7 @@ macro_rules! headermap {
 
 /// Imports just the required parts of [Direkuta](Direkuta).
 pub mod prelude {
-    pub use super::{Direkuta, Logger, Middle, Request, Response};
+    pub use super::{Direkuta, Logger, Middle, Request, Response, State};
 
     /// Imports the required parts from [Tera](Tera).
     ///

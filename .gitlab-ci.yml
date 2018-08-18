@@ -2,9 +2,9 @@ image: "rust:latest"
 
 stages:
 - info
-- deps
+# - deps
 - test
-- panic
+# - panic
 - build
 
 cache:
@@ -15,6 +15,8 @@ cache:
 
 variables:
   CARGO_HOME: $CI_PROJECT_DIR/cargo
+  GIT_STRATEGY: fetch
+  GIT_SUBMODULE_STRATEGY: none
 
 info:
   stage: info
@@ -22,25 +24,25 @@ info:
   - rustc --version
   - cargo --version
 
-deps:
-  allow_failure: true
-  stage: deps
-  script:
-  - cargo install --git https://github.com/Technolution/rustig rustig || echo "rustig already installed"
+# deps:
+#   allow_failure: true
+#   stage: deps
+#   script:
+#   - cargo install --git https://github.com/Technolution/rustig rustig || echo "rustig already installed"
 
 test:
   stage: test
   script:
   - cargo test
 
-panic:
-  allow_failure: true
-  stage: panic
-  script:
-  - export PATH="$CI_PROJECT_DIR/cargo/bin:$PATH"
-  - cargo build --example hello
-  - cd ./target/debug/examples
-  - rustig -b ./hello
+# panic:
+#   allow_failure: true
+#   stage: panic
+#   script:
+#   - export PATH="$CI_PROJECT_DIR/cargo/bin:$PATH"
+#   - cargo build --example hello
+#   - cd ./target/debug/examples
+#    - rustig -b ./hello
 
 build:
   stage: build

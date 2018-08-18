@@ -22,18 +22,16 @@ info:
   - rustc --version
   - cargo --version
 
-test:
-  stage: test
-  script:
-  - cargo test
-
 deps:
   allow_failure: true
   stage: deps
   script:
-  - cargo install cargo-update || echo "cargo-update already installed"
   - cargo install --git https://github.com/Technolution/rustig rustig || echo "rustig already installed"
-  - cargo install-update -a
+
+test:
+  stage: test
+  script:
+  - cargo test
 
 panic:
   allow_failure: true

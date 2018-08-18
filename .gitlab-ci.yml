@@ -3,7 +3,7 @@ image: "rust:latest"
 stages:
 - info
 - test
-#- deps
+# - deps
 - build
 
 cache:
@@ -18,17 +18,18 @@ variables:
 info:
   stage: info
   script:
-  - cargo test
+  - rustc --version
+  - cargo --version
 
 test:
   stage: test
   script:
   - cargo test
 
-#deps:
-#  stage: deps
-#  script:
-#  - cargo build
+# deps:
+#   stage: deps
+#   script:
+#   - cargo build
 
 build:
   stage: build

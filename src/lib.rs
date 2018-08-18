@@ -63,7 +63,7 @@ use regex::Regex;
 use serde::Serialize;
 
 #[cfg(feature = "html")]
-use tera::{Context, Tera};
+use tera::Tera;
 
 /// The Direkuta web server itself.
 pub struct Direkuta {

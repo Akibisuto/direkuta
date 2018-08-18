@@ -28,13 +28,15 @@ test:
   - cargo test
 
 deps:
- stage: deps
+  allow_failure: true
+  stage: deps
   script:
   - cargo install cargo-update || echo "cargo-update already installed"
   - cargo install --git https://github.com/Technolution/rustig rustig || echo "rustig already installed"
   - cargo install-update -a
 
 panic:
+  allow_failure: true
   stage: panic
   script:
   - cargo build --example hello

@@ -2,8 +2,9 @@ image: "rust:latest"
 
 stages:
 - info
+- deps
 - test
-# - deps
+- panic
 - build
 
 cache:
@@ -26,10 +27,19 @@ test:
   script:
   - cargo test
 
-# deps:
-#   stage: deps
-#   script:
-#   - cargo build
+deps:
+ stage: deps
+  script:
+  - cargo install cargo-update || echo "cargo-update already installed"
+  - cargo install --git https://github.com/Technolution/rustig rustig || echo "rustig already installed"
+  - cargo install-update -a
+
+panic:
+  stage: panic
+  script:
+  - cargo build --example hello
+  - cd ./target/debug/examples
+  - rustig -b ./hello
 
 build:
   stage: build

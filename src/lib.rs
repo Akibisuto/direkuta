@@ -181,6 +181,7 @@ impl Direkuta {
 
 impl Default for Direkuta {
     fn default() -> Self {
+        #[allow(unused_mut)]
         let mut state = State::new();
 
         #[cfg(feature = "html")]
@@ -1421,6 +1422,7 @@ pub mod prelude {
     /// Imports the required parts from [Tera](Tera).
     ///
     /// You'll need to import this if you want to use Tera templates.
+    #[cfg(feature = "html")]
     pub mod html {
         pub use tera::{Context, Tera};
     }

@@ -57,8 +57,12 @@ path = "examples/hello.rs"
 [[example]]
 name = "json"
 path = "examples/json.rs"
+required-features = ["json"]
 
 [features]
-default = ["html", "json"]
+default = []
 html = ["tera"]
 json = ["serde", "serde_derive", "serde_json"]
+
+[package.metadata.docs.rs]
+all-features = true

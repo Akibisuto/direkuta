@@ -3,7 +3,7 @@ image: "rust:latest"
 stages:
 - info
 # - deps
-- test
+# - test
 # - panic
 - build
 
@@ -30,10 +30,10 @@ info:
 #   script:
 #   - cargo install --git https://github.com/Technolution/rustig rustig || echo "rustig already installed"
 
-test:
-  stage: test
-  script:
-  - cargo test
+# test:
+#   stage: test
+#   script:
+#   - cargo test
 
 # panic:
 #   allow_failure: true

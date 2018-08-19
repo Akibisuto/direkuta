@@ -440,7 +440,7 @@ struct Route {
 ///
 /// The format is as shown.
 ///
-/// ```
+/// ```rust,ignore
 /// URL : { Parameter => Capture } {
 ///     Method => Response
 /// }
@@ -473,7 +473,7 @@ impl Router {
     ///     });
     /// ```
     ///
-    /// ```
+    /// ```rust,ignore
     /// "/" {
     ///     GET => "Hello World!"
     /// }
@@ -492,11 +492,11 @@ impl Router {
     ///     });
     /// ```
     ///
-    /// ```
+    /// ```rust,ignore
     /// "/txuritan" : { "name" => "txuritan" } {
     ///     GET => "txuritan"
     /// }
-    /// ```
+    /// ```ignore
     pub fn route<
         S: Into<String>,
         H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
@@ -538,6 +538,12 @@ impl Router {
     ///     });
     /// ```
     ///
+    /// ```rust,ignore
+    /// "/" : {  } {
+    ///     GET => "Hello World!"
+    /// }
+    /// ```
+    ///
     /// ## Regex
     ///
     /// ```rust
@@ -551,7 +557,7 @@ impl Router {
     ///     });
     /// ```
     ///
-    /// ```
+    /// ```rust,ignore
     /// "/txuritan" : { "name" => "txuritan" } {
     ///     GET => "txuritan"
     /// }
@@ -583,7 +589,7 @@ impl Router {
     ///     });
     /// ```
     ///
-    /// ```
+    /// ```rust,ignore
     /// "/" : {  } {
     ///     POST => "Hello World!"
     /// }
@@ -615,7 +621,7 @@ impl Router {
     ///     });
     /// ```
     ///
-    /// ```
+    /// ```rust,ignore
     /// "/" : {  } {
     ///     PUT => "Hello World!"
     /// }
@@ -647,7 +653,7 @@ impl Router {
     ///     });
     /// ```
     ///
-    /// ```
+    /// ```rust,ignore
     /// "/" : {  } {
     ///     DELETE => "Hello World!"
     /// }
@@ -679,7 +685,7 @@ impl Router {
     ///     });
     /// ```
     ///
-    /// ```
+    /// ```rust,ignore
     /// "/" : {  } {
     ///     HEAD => "Hello World!"
     /// }
@@ -711,7 +717,7 @@ impl Router {
     ///     });
     /// ```
     ///
-    /// ```
+    /// ```rust,ignore
     /// "/" : {  } {
     ///     OPTIONS => "Hello World!"
     /// }
@@ -745,7 +751,7 @@ impl Router {
     ///     });
     /// ```
     ///
-    /// ```
+    /// ```rust,ignore
     /// "/parent/child" : {  } {
     ///     GET => "Hello World!"
     /// }
@@ -1060,16 +1066,6 @@ impl Response {
     }
 
     /// Wrapper around [Response.set_body](Response::set_body) for the CSS context type.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// let mut res = Response::new();
-    /// res.css(|c| {
-    ///     c.path("/static/app.css");
-    /// });
-    /// ```
     pub fn css<F: Fn(&mut CssBuilder)>(&mut self, css: F) {
         let _ = self
             .headers_mut()
@@ -1083,32 +1079,12 @@ impl Response {
     }
 
     /// Wrapper around [Response.set_body](Response::set_body) for the CSS context type.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// let res = Response::new()
-    ///     .with_css(|c| {
-    ///         c.path("/static/app.css");
-    ///     });
-    /// ```
     pub fn with_css<F: Fn(&mut CssBuilder)>(mut self, css: F) -> Self {
         self.css(css);
         self
     }
 
     /// Wrapper around [Response.set_body](Response::set_body) for the JS context type.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// let mut res = Response::new();
-    /// res.js(|j| {
-    ///     j.path("/static/app.js");
-    /// });
-    /// ```
     pub fn js<F: Fn(&mut JsBuilder)>(&mut self, js: F) {
         let _ = self.headers_mut().insert(
             header::CONTENT_TYPE,
@@ -1123,16 +1099,6 @@ impl Response {
     }
 
     /// Wrapper around [Response.set_body](Response::set_body) for the JS context type.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// let res = Response::new()
-    ///     .with_js(|j| {
-    ///         j.path("/static/app.js");
-    ///     });
-    /// ```
     pub fn with_js<F: Fn(&mut JsBuilder)>(mut self, js: F) -> Self {
         self.js(js);
         self

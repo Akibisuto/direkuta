@@ -14,7 +14,7 @@
 //!     .run("0.0.0.0:3000");
 //! ```
 
-/*#![deny(
+#![deny(
     missing_docs,
     single_use_lifetimes,
     trivial_casts,
@@ -25,7 +25,7 @@
     unused_qualifications,
     unreachable_pub,
     unused_results
-)]*/
+)]
 
 extern crate futures;
 extern crate http;
@@ -431,12 +431,15 @@ struct Route {
     pattern: Regex,
 }
 
+/// Router.
+///
+/// This is not to be used directly, it is only used for [Direkuta.route](Direkuta::route).
 pub struct Router {
     inner: IndexMap<Method, SmallVec<[Route; 64]>>,
 }
 
 impl Router {
-    pub fn new() -> Router {
+    fn new() -> Router {
         Router::default()
     }
 
@@ -451,14 +454,12 @@ impl Router {
     /// # use direkuta::prelude::hyper::*;
     /// Direkuta::new()
     ///     .route(|r| {
-    ///         r.path("/", |r| {
-    ///             r.route(Method::GET, |_, _, _| {
-    ///                 Response::new().with_body("Hello World!")
-    ///             });
+    ///         r.route(Method::GET, "/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
     ///         });
     ///     });
     /// ```
-    fn route<
+    pub fn route<
         H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
     >(
         &mut self,
@@ -627,10 +628,8 @@ impl Router {
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.path("/parent", |r| {
-    ///             r.path("/child", |r| {
-    ///                 r.get("/", |_, _, _| {
-    ///                     Response::new().with_body("Hello World!")
-    ///                 });
+    ///             r.get("/child", |_, _, _| {
+    ///                 Response::new().with_body("Hello World!")
     ///             });
     ///         });
     ///     });

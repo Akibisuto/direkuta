@@ -14,7 +14,7 @@
 //!     .run("0.0.0.0:3000");
 //! ```
 
-#![deny(
+/*#![deny(
     missing_docs,
     single_use_lifetimes,
     trivial_casts,
@@ -25,13 +25,14 @@
     unused_qualifications,
     unreachable_pub,
     unused_results
-)]
+)]*/
 
 extern crate futures;
 extern crate http;
 extern crate hyper;
 extern crate indexmap;
 extern crate regex;
+extern crate smallvec;
 
 #[cfg(feature = "json")]
 extern crate serde;
@@ -58,6 +59,7 @@ use hyper::service::{NewService, Service};
 use hyper::{rt, Body, Method, Server, StatusCode, Uri, Version};
 use indexmap::IndexMap;
 use regex::Regex;
+use smallvec::SmallVec;
 
 #[cfg(feature = "json")]
 use serde::Serialize;
@@ -72,7 +74,7 @@ pub struct Direkuta {
     /// Stores middleware, to be later used in [Service::call](Service::call).
     middle: Arc<IndexMap<TypeId, Box<Middle + Send + Sync + 'static>>>,
     /// The router, it knows where a url is meant to go.
-    routes: Arc<RouteRecognizer>,
+    routes: Arc<Router>,
 }
 
 impl Direkuta {
@@ -142,13 +144,11 @@ impl Direkuta {
     ///         // handlers here
     ///     });
     /// ```
-    pub fn route<R: Fn(&mut RouteBuilder) + Send + Sync + 'static>(mut self, route: R) -> Self {
-        let mut route_builder = RouteBuilder {
-            routes: IndexMap::new(),
-        };
+    pub fn route<R: Fn(&mut Router) + Send + Sync + 'static>(mut self, route: R) -> Self {
+        let mut route_builder = Router::new();
 
         route(&mut route_builder);
-        self.routes = Arc::new(route_builder.finish());
+        self.routes = Arc::new(route_builder);
 
         self
     }
@@ -195,9 +195,7 @@ impl Default for Direkuta {
         Self {
             state: Arc::new(state),
             middle: Arc::new(IndexMap::new()),
-            routes: Arc::new(RouteRecognizer {
-                routes: IndexMap::new(),
-            }),
+            routes: Arc::new(Router::default()),
         }
     }
 }
@@ -415,255 +413,33 @@ impl Default for State {
     }
 }
 
-type Handler = Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static;
+type Handler = Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static;
 
-struct Route {
-    handler: Box<Handler>,
-    pattern: Regex,
+enum Mode {
+    Id,
+    Regex,
+    Look,
 }
 
-/// Route builder.
+/// Router.
 ///
 /// This is not to be used directly, it is only used for [Direkuta.route](Direkuta::route).
-pub struct RouteBuilder {
-    routes: IndexMap<Method, Vec<Route>>,
-}
-
-impl RouteBuilder {
-    /// Normalizes and adds route to the routing map.
-    ///
-    /// Its easier to the the helper functions.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// # use direkuta::prelude::hyper::*;
-    /// Direkuta::new()
-    ///     .route(|r| {
-    ///         r.route(Method::GET, "/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
-    ///         });
-    ///     });
-    /// ```
-    pub fn route<
-        S: AsRef<str>,
-        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
-    >(
-        &mut self,
-        method: Method,
-        pattern: S,
-        handler: H,
-    ) -> &Self {
-        let pattern = normalize_pattern(pattern.as_ref());
-        let pattern = Regex::new(&pattern).expect("Pattern does not contain valid regex");
-        let handler = Box::new(handler);
-        self.routes
-            .entry(method)
-            .or_insert(Vec::new())
-            .push(Route { handler, pattern });
-        self
-    }
-
-    /// 'Finalizes' the [RouteBuilder](RouteBuilder).
-    ///
-    /// After this is called nothing should be add to the [RouteBuilder](RouteBuilder),
-    /// as it will not update.
-    fn finish(self) -> RouteRecognizer {
-        RouteRecognizer {
-            routes: self.routes,
-        }
-    }
-
-    /// Adds a [GET](Method::GET) request handler.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// Direkuta::new()
-    ///     .route(|r| {
-    ///         r.get("/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
-    ///         });
-    ///     });
-    /// ```
-    pub fn get<
-        S: AsRef<str>,
-        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
-    >(
-        &mut self,
-        pattern: S,
-        handler: H,
-    ) -> &Self {
-        self.route(Method::GET, pattern, handler)
-    }
-
-    /// Adds a [POST](Method::POST) request handler.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// Direkuta::new()
-    ///     .route(|r| {
-    ///         r.post("/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
-    ///         });
-    ///     });
-    /// ```
-    pub fn post<
-        S: AsRef<str>,
-        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
-    >(
-        &mut self,
-        pattern: S,
-        handler: H,
-    ) -> &Self {
-        self.route(Method::POST, pattern, handler)
-    }
-
-    /// Adds a [PUT](Method::PUT) request handler.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// Direkuta::new()
-    ///     .route(|r| {
-    ///         r.put("/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
-    ///         });
-    ///     });
-    /// ```
-    pub fn put<
-        S: AsRef<str>,
-        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
-    >(
-        &mut self,
-        pattern: S,
-        handler: H,
-    ) -> &Self {
-        self.route(Method::PUT, pattern, handler)
-    }
-
-    /// Adds a [DELETE](Method::DELETE) request handler.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// Direkuta::new()
-    ///     .route(|r| {
-    ///         r.delete("/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
-    ///         });
-    ///     });
-    /// ```
-    pub fn delete<
-        S: AsRef<str>,
-        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
-    >(
-        &mut self,
-        pattern: S,
-        handler: H,
-    ) -> &Self {
-        self.route(Method::DELETE, pattern, handler)
-    }
-
-    /// Adds a [HEAD](Method::HEAD) request handler.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// Direkuta::new()
-    ///     .route(|r| {
-    ///         r.head("/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
-    ///         });
-    ///     });
-    /// ```
-    pub fn head<
-        S: AsRef<str>,
-        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
-    >(
-        &mut self,
-        pattern: S,
-        handler: H,
-    ) -> &Self {
-        self.route(Method::HEAD, pattern, handler)
-    }
-
-    /// Adds a [OPTIONS](Method::OPTIONS) request handler.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// Direkuta::new()
-    ///     .route(|r| {
-    ///         r.options("/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
-    ///         });
-    ///     });
-    /// ```
-    pub fn options<
-        S: AsRef<str>,
-        H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static,
-    >(
-        &mut self,
-        pattern: S,
-        handler: H,
-    ) -> &Self {
-        self.route(Method::OPTIONS, pattern, handler)
-    }
-
-    /// Create a path for multiple request types.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// Direkuta::new()
-    ///     .route(|r| {
-    ///         r.path("/", |r| {
-    ///             r.get(|_, _, _| {
-    ///                 Response::new().with_body("Hello World!")
-    ///             });
-    ///         });
-    ///     });
-    /// ```
-    pub fn path<H: Fn(&mut RoutePathBuilder) + Send + Sync + 'static>(
-        &mut self,
-        pattern: &str,
-        handler: H,
-    ) -> &Self {
-        let pattern = normalize_pattern(pattern);
-        let pattern = Regex::new(&pattern).expect("Pattern does not contain valid regex");
-
-        let mut builder = RoutePathBuilder {
-            pattern,
-            routes: IndexMap::new(),
-        };
-
-        handler(&mut builder);
-
-        let _ = &self.routes.extend(builder.finish());
-
-        self
-    }
-}
-
-/// Route Path builder.
-///
-/// This is not to be used directly, it is only used for [RouteBuilder.path](RouteBuilder::path).
-pub struct RoutePathBuilder {
+struct Route {
+    handler: Box<Handler>,
+    ids: SmallVec<[String; 32]>,
+    path: String,
     pattern: Regex,
-    routes: IndexMap<Method, Vec<Route>>,
 }
 
-impl RoutePathBuilder {
+pub struct Router {
+    inner: IndexMap<Method, SmallVec<[Route; 64]>>,
+}
+
+impl Router {
+    pub fn new() -> Router {
+        Router::default()
+    }
+
     /// Adds route to routing map.
     ///
     /// Its easier to the the helper functions.
@@ -682,25 +458,26 @@ impl RoutePathBuilder {
     ///         });
     ///     });
     /// ```
-    pub fn route<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+    fn route<
+        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
         method: Method,
+        path: &str,
         handler: H,
-    ) -> &Self {
-        let handler = Box::new(handler);
-        self.routes.entry(method).or_insert(Vec::new()).push(Route {
-            handler,
-            pattern: self.pattern.clone(),
-        });
-        self
-    }
+    ) {
+        // Transform the path in to ids and regex
+        let reader = self.read(path);
 
-    /// 'Finalizes' the [RouteBuilder](RouteBuilder).
-    ///
-    /// After this is called nothing should be add to the [RouteBuilder](RouteBuilder),
-    /// as it will not update.
-    fn finish(self) -> IndexMap<Method, Vec<Route>> {
-        self.routes
+        self.inner
+            .entry(method)
+            .or_insert(SmallVec::new())
+            .push(Route {
+                handler: Box::new(handler),
+                ids: reader.0,
+                path: String::from(path),
+                pattern: reader.1,
+            });
     }
 
     /// Adds a [GET](Method::GET) request handler.
@@ -711,18 +488,19 @@ impl RoutePathBuilder {
     /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
-    ///         r.path("/", |r| {
-    ///             r.get(|_, _, _| {
-    ///                 Response::new().with_body("Hello World!")
-    ///             });
+    ///         r.get("/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
     ///         });
     ///     });
     /// ```
-    pub fn get<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+    pub fn get<
+        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
+        path: &str,
         handler: H,
-    ) -> &Self {
-        self.route(Method::GET, handler)
+    ) {
+        self.route(Method::GET, path, handler);
     }
 
     /// Adds a [POST](Method::POST) request handler.
@@ -733,18 +511,19 @@ impl RoutePathBuilder {
     /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
-    ///         r.path("/", |r| {
-    ///             r.post(|_, _, _| {
-    ///                 Response::new().with_body("Hello World!")
-    ///             });
+    ///         r.post("/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
     ///         });
     ///     });
     /// ```
-    pub fn post<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+    pub fn post<
+        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
+        path: &str,
         handler: H,
-    ) -> &Self {
-        self.route(Method::POST, handler)
+    ) {
+        self.route(Method::POST, path, handler);
     }
 
     /// Adds a [PUT](Method::PUT) request handler.
@@ -755,18 +534,19 @@ impl RoutePathBuilder {
     /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
-    ///         r.path("/", |r| {
-    ///             r.put(|_, _, _| {
-    ///                 Response::new().with_body("Hello World!")
-    ///             });
+    ///         r.put("/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
     ///         });
     ///     });
     /// ```
-    pub fn put<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+    pub fn put<
+        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
+        path: &str,
         handler: H,
-    ) -> &Self {
-        self.route(Method::PUT, handler)
+    ) {
+        self.route(Method::PUT, path, handler);
     }
 
     /// Adds a [DELETE](Method::DELETE) request handler.
@@ -777,18 +557,19 @@ impl RoutePathBuilder {
     /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
-    ///         r.path("/", |r| {
-    ///             r.delete(|_, _, _| {
-    ///                 Response::new().with_body("Hello World!")
-    ///             });
+    ///         r.delete("/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
     ///         });
     ///     });
     /// ```
-    pub fn delete<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+    pub fn delete<
+        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
+        path: &str,
         handler: H,
-    ) -> &Self {
-        self.route(Method::DELETE, handler)
+    ) {
+        self.route(Method::DELETE, path, handler);
     }
 
     /// Adds a [HEAD](Method::HEAD) request handler.
@@ -799,18 +580,19 @@ impl RoutePathBuilder {
     /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
-    ///         r.path("/", |r| {
-    ///             r.head(|_, _, _| {
-    ///                 Response::new().with_body("Hello World!")
-    ///             });
+    ///         r.head("/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
     ///         });
     ///     });
     /// ```
-    pub fn head<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+    pub fn head<
+        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
+        path: &str,
         handler: H,
-    ) -> &Self {
-        self.route(Method::HEAD, handler)
+    ) {
+        self.route(Method::HEAD, path, handler);
     }
 
     /// Adds a [OPTIONS](Method::OPTIONS) request handler.
@@ -821,18 +603,19 @@ impl RoutePathBuilder {
     /// # use direkuta::prelude::*;
     /// Direkuta::new()
     ///     .route(|r| {
-    ///         r.path("/", |r| {
-    ///             r.options(|_, _, _| {
-    ///                 Response::new().with_body("Hello World!")
-    ///             });
+    ///         r.options("/", |_, _, _| {
+    ///             Response::new().with_body("Hello World!")
     ///         });
     ///     });
     /// ```
-    pub fn options<H: Fn(&Request, &State, &Captures) -> Response + Send + Sync + 'static>(
+    pub fn options<
+        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+    >(
         &mut self,
+        path: &str,
         handler: H,
-    ) -> &Self {
-        self.route(Method::OPTIONS, handler)
+    ) {
+        self.route(Method::OPTIONS, path, handler);
     }
 
     /// Create a path for multiple request types.
@@ -845,84 +628,137 @@ impl RoutePathBuilder {
     ///     .route(|r| {
     ///         r.path("/parent", |r| {
     ///             r.path("/child", |r| {
-    ///                 r.get(|_, _, _| {
+    ///                 r.get("/", |_, _, _| {
     ///                     Response::new().with_body("Hello World!")
     ///                 });
     ///             });
     ///         });
     ///     });
     /// ```
-    pub fn path<H: Fn(&mut RoutePathBuilder) + Send + Sync + 'static>(
-        &mut self,
-        pattern: &str,
-        handler: H,
-    ) -> &Self {
-        let pattern = format!("{}{}", self.pattern, pattern);
-        let pattern = normalize_pattern(pattern.as_str());
-        let pattern = Regex::new(&pattern).expect("Pattern does not contain valid regex");
+    pub fn path<F: Fn(&mut Router) + Send + Sync + 'static>(&mut self, path: &str, sub: F) {
+        let mut builder = Router::new();
 
-        let mut builder = RoutePathBuilder {
-            pattern,
-            routes: IndexMap::new(),
-        };
+        sub(&mut builder);
 
-        handler(&mut builder);
+        // Loop through new methods
+        for (method, routes) in builder.inner {
+            // Loop through new routes
+            for route in routes {
+                // Concat paths
+                let path = format!("{}{}", path, route.path);
 
-        let _ = &self.routes.extend(builder.finish());
+                // Transform the path in to ids and regex
+                let reader = self.read(&path);
 
-        self
-    }
-}
-
-/// A type wrapper for ease of use Captures.
-type Captures = Vec<(Option<String>, String)>;
-
-/// Route handler.
-struct RouteRecognizer {
-    routes: IndexMap<Method, Vec<Route>>,
-}
-
-impl RouteRecognizer {
-    /// When a request is recived this is called to find a handler.
-    fn recognize(&self, method: &Method, path: &str) -> Result<(&Handler, Captures), StatusCode> {
-        let routes = self.routes.get(method).ok_or(StatusCode::NOT_FOUND)?;
-        for route in routes {
-            if let Some(caps) = get_owned_captures(&route.pattern, path) {
-                return Ok((&*route.handler, caps));
+                self.inner
+                    .entry(method.clone())
+                    .or_insert(SmallVec::new())
+                    .push(Route {
+                        handler: route.handler,
+                        ids: reader.0,
+                        path,
+                        pattern: reader.1,
+                    });
             }
         }
+    }
+
+    /// When a request is recived this is called to find a handler.
+    fn recognize(
+        &self,
+        method: &Method,
+        path: &str,
+    ) -> Result<(&Handler, IndexMap<String, String>), StatusCode> {
+        // Get method
+        let routes = self.inner.get(method).ok_or(StatusCode::NOT_FOUND)?;
+
+        // Loop through all routes of method
+        for route in routes.iter() {
+            // Make sure the route matches
+            if route.pattern.is_match(path) {
+                // Get the capture map
+                if let Some(map) = self.captures(&route, &route.pattern, path) {
+                    return Ok((&*route.handler, map));
+                }
+            }
+        }
+
         Err(StatusCode::NOT_FOUND)
+    }
+
+    /// Takes each capture and transfroms it into a map of ids and captures.
+    fn captures(&self, route: &Route, re: &Regex, path: &str) -> Option<IndexMap<String, String>> {
+        // Get captures
+        re.captures(path).map(|caps| {
+            let mut res: IndexMap<String, String> = IndexMap::new();
+
+            // Loop through each capture
+            for (i, _) in caps.iter().enumerate() {
+                // We dont want the frist whole capture
+                if i != 0 {
+                    // Insert the capture to its id
+                    let _ = res.insert(
+                        // An id exists so the unwrap is safe
+                        route.ids.get(i - 1).unwrap().to_string(),
+                        // The capture exists so the unwrap is safe
+                        caps.get(i).unwrap().as_str().to_string(),
+                    );
+                }
+            }
+
+            res
+        })
+    }
+
+    /// Parse each path into a vector of ids and a regex pattern
+    fn read(&self, path: &str) -> (SmallVec<[String; 32]>, Regex) {
+        let mut ids: SmallVec<[String; 32]> = SmallVec::new();
+        let mut pattern = String::new();
+
+        let mut mode = Mode::Look;
+        let mut id = String::new();
+
+        for c in path.chars() {
+            match c {
+                '<' => mode = Mode::Id,
+                ':' => {
+                    mode = Mode::Regex;
+                    ids.push(id.clone());
+                    id.clear();
+                }
+                '>' => mode = Mode::Look,
+                _ => match mode {
+                    Mode::Id => id.push(c),
+                    Mode::Regex | Mode::Look => pattern.push(c),
+                },
+            }
+        }
+
+        (ids, Regex::new(&self.normalize(&pattern)).unwrap())
+    }
+
+    /// Normalizes the regex paths.
+    ///
+    /// Removes the beginning `^` and ending `$` and `/`, if the exist.
+    /// Then adds them even if they weren't there.
+    fn normalize(&self, pattern: &str) -> Cow<str> {
+        let pattern = pattern
+            .trim()
+            .trim_left_matches('^')
+            .trim_right_matches('$')
+            .trim_right_matches('/');
+        match pattern {
+            "" => "^/$".into(),
+            s => format!("^{}/?$", s).into(),
+        }
     }
 }
 
-/// Takes each capture and transfroms it into a vector of string tuples.
-fn get_owned_captures(re: &Regex, path: &str) -> Option<Captures> {
-    re.captures(path).map(|caps| {
-        let mut res = Vec::with_capacity(caps.len());
-        for (i, name) in re.capture_names().enumerate() {
-            let val = match name {
-                Some(name) => caps.name(name).unwrap(),
-                None => caps.get(i).unwrap(),
-            };
-            res.push((name.map(|s| s.to_owned()), val.as_str().to_owned()));
+impl Default for Router {
+    fn default() -> Router {
+        Router {
+            inner: IndexMap::new(),
         }
-        res
-    })
-}
-
-/// Normalizes the regex paths.
-///
-/// Removes the beginning `^` and ending `$` and `/`, if the exist.
-/// Then adds them even if they weren't there.
-fn normalize_pattern(pattern: &str) -> Cow<str> {
-    let pattern = pattern
-        .trim()
-        .trim_left_matches('^')
-        .trim_right_matches('$')
-        .trim_right_matches('/');
-    match pattern {
-        "" => "^/$".into(),
-        s => format!("^{}/?$", s).into(),
     }
 }
 

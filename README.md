@@ -36,11 +36,11 @@ $ wrk -t20 -c400 -d10s http://0.0.0.0:3000/
 Running 10s test @ http://0.0.0.0:3000/
   20 threads and 400 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     8.65ms    5.94ms  41.92ms   67.63%
-    Req/Sec     1.24k   252.08     3.20k    69.49%
-  247483 requests in 10.09s, 20.77MB read
-Requests/sec:  24537.52
-Transfer/sec:      2.06MB
+    Latency     8.07ms    5.44ms  42.40ms   65.97%
+    Req/Sec     1.33k   246.38     5.66k    78.02%
+  265182 requests in 10.10s, 22.25MB read
+Requests/sec:  26267.59
+Transfer/sec:      2.20MB
 ```
 
 Direkuta Hello Example (Release):
@@ -50,11 +50,11 @@ $ wrk -t20 -c400 -d10s http://0.0.0.0:3000/
 Running 10s test @ http://0.0.0.0:3000/
   20 threads and 400 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     9.10ms    5.86ms  39.37ms   68.69%
-    Req/Sec     1.19k   243.89     5.62k    75.16%
-  237880 requests in 10.09s, 19.96MB read
-Requests/sec:  23581.02
-Transfer/sec:      1.98MB
+    Latency     8.52ms    5.34ms  39.38ms   66.26%
+    Req/Sec     1.26k   203.46     4.36k    77.51%
+  253031 requests in 10.10s, 21.24MB read
+Requests/sec:  25049.60
+Transfer/sec:      2.10MB
 ```
 
 ## Middleware

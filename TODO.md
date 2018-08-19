@@ -9,6 +9,7 @@
 - [X] ~~Impliment middleware calling.~~
 - [X] Route parameter ids instead of tuple positions.
 - [ ] Static files with path sanitization.
+  - Sanitization slightly works but just points to working dir.
 
 ## Future
 

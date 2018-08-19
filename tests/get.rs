@@ -2,7 +2,7 @@ extern crate direkuta;
 extern crate tokio;
 extern crate yukikaze;
 
-use std::{thread, time};
+use std::thread;
 
 use direkuta::prelude::*;
 use yukikaze::client::{Client, HttpClient, Request};
@@ -19,8 +19,6 @@ fn get_pass() {
     thread::spawn(move || {
         server();
     });
-
-    thread::sleep(time::Duration::new(1, 0));
 
     let mut tokio_rt = tokio::runtime::current_thread::Runtime::new().expect("To create runtime");
     let client = Client::default();

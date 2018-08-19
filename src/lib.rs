@@ -49,7 +49,6 @@ use std::any::{Any, TypeId};
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use futures::{future, Future};
@@ -1096,19 +1095,6 @@ impl Default for Response {
     }
 }
 
-fn sanitize(path: &str) -> PathBuf {
-    let current = std::env::current_dir().unwrap();
-    let working = Path::new(&current);
-    let full: PathBuf = [working.to_str().unwrap(), path].iter().collect::<PathBuf>()
-        .canonicalize().unwrap_or(working.to_path_buf());
-
-    if full.starts_with(working) {
-        full
-    } else {
-        working.to_path_buf()
-    }
-}
-
 /// A builder function for CSS Responses.
 ///
 /// Do not directly use.
@@ -1126,34 +1112,10 @@ impl CssBuilder {
     }
 
     /// Load from [File](std::fs::File).
-    ///
-    /// You have to manually sanitize the path.
     pub fn file(&mut self, mut file: File) {
         match file.read_to_string(&mut self.inner) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(_) => println!("Unable to write file contents"),
-        }
-    }
-
-    /// Load from path.
-    ///
-    /// If the file cannot be found nothing there will be an empty response.
-    ///
-    /// The path is sanitized before being based to `File::open`.
-    ///
-    /// # Examples
-    ///
-    /// ```rust,no_run
-    /// # use direkuta::prelude::*;
-    /// let mut res = Response::new();
-    /// res.css(|c| {
-    ///     c.path("/static/app.css");
-    /// });
-    /// ```
-    pub fn path(&mut self, path: &str) {
-        let path = sanitize(path);
-        if let Ok(f) = File::open(path) {
-            self.file(f);
         }
     }
 }
@@ -1185,28 +1147,8 @@ impl JsBuilder {
     /// Load from [File](std::fs::File).
     pub fn file(&mut self, mut file: File) {
         match file.read_to_string(&mut self.inner) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(_) => println!("Unable to write file contents"),
-        }
-    }
-
-    /// Load from path.
-    ///
-    /// If the file cannot be found nothing there will be an empty response.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// # use direkuta::prelude::*;
-    /// let mut res = Response::new();
-    /// res.js(|j| {
-    ///     j.path("/static/app.js");
-    /// });
-    /// ```
-    pub fn path<P: AsRef<Path>>(&mut self, path: P) {
-        let path = sanitize(path);
-        if let Ok(f) = File::open(path) {
-            self.file(f);
         }
     }
 }

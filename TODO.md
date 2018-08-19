@@ -8,8 +8,7 @@
 - [X] ~~Change router to support a `path` function.~~
 - [X] ~~Impliment middleware calling.~~
 - [X] Route parameter ids instead of tuple positions.
-- [ ] Static files with path sanitization.
-  - Sanitization slightly works but just points to working dir.
+- [ ] Error handling
 
 ## Future
 

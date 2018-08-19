@@ -426,7 +426,7 @@ enum Mode {
 /// This is not to be used directly, it is only used for [Direkuta.route](Direkuta::route).
 struct Route {
     handler: Box<Handler>,
-    ids: SmallVec<[String; 32]>,
+    ids: SmallVec<[String; 64]>,
     path: String,
     pattern: Regex,
 }
@@ -434,8 +434,19 @@ struct Route {
 /// Router.
 ///
 /// This is not to be used directly, it is only used for [Direkuta.route](Direkuta::route).
+///
+/// All examples for routing are shown with 'output' or what the paths will look like
+/// and what the response would look like when called.
+///
+/// The format is as shown.
+///
+/// ```
+/// URL : { Parameter => Capture } {
+///     Method => Response
+/// }
+/// ```
 pub struct Router {
-    inner: IndexMap<Method, SmallVec<[Route; 64]>>,
+    inner: IndexMap<Method, SmallVec<[Route; 128]>>,
 }
 
 impl Router {
@@ -449,6 +460,8 @@ impl Router {
     ///
     /// # Examples
     ///
+    /// ## Simple
+    ///
     /// ```rust
     /// # use direkuta::prelude::*;
     /// # use direkuta::prelude::hyper::*;
@@ -459,16 +472,44 @@ impl Router {
     ///         });
     ///     });
     /// ```
+    ///
+    /// ```
+    /// "/" {
+    ///     GET => "Hello World!"
+    /// }
+    /// ```
+    ///
+    /// ## Regex
+    ///
+    /// ```rust
+    /// # use direkuta::prelude::*;
+    /// # use direkuta::prelude::hyper::*;
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.route(Method::GET, "/<name:(.*)>", |_, _, c| {
+    ///             Response::new().with_body(c.get("name").unwrap().as_str())
+    ///         });
+    ///     });
+    /// ```
+    ///
+    /// ```
+    /// "/txuritan" : { "name" => "txuritan" } {
+    ///     GET => "txuritan"
+    /// }
+    /// ```
     pub fn route<
+        S: Into<String>,
         H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
     >(
         &mut self,
         method: Method,
-        path: &str,
+        path: S,
         handler: H,
     ) {
+        let path = path.into();
+
         // Transform the path in to ids and regex
-        let reader = self.read(path);
+        let reader = self.read(&path);
 
         self.inner
             .entry(method)
@@ -476,7 +517,7 @@ impl Router {
             .push(Route {
                 handler: Box::new(handler),
                 ids: reader.0,
-                path: String::from(path),
+                path: path,
                 pattern: reader.1,
             });
     }
@@ -484,6 +525,8 @@ impl Router {
     /// Adds a [GET](Method::GET) request handler.
     ///
     /// # Examples
+    ///
+    /// ## Simple
     ///
     /// ```rust
     /// # use direkuta::prelude::*;
@@ -494,11 +537,31 @@ impl Router {
     ///         });
     ///     });
     /// ```
+    ///
+    /// ## Regex
+    ///
+    /// ```rust
+    /// # use direkuta::prelude::*;
+    /// # use direkuta::prelude::hyper::*;
+    /// Direkuta::new()
+    ///     .route(|r| {
+    ///         r.route(Method::GET, "/<name:(.*)>", |_, _, c| {
+    ///             Response::new().with_body(c.get("name").unwrap().as_str())
+    ///         });
+    ///     });
+    /// ```
+    ///
+    /// ```
+    /// "/txuritan" : { "name" => "txuritan" } {
+    ///     GET => "txuritan"
+    /// }
+    /// ```
     pub fn get<
+        S: Into<String>,
         H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
     >(
         &mut self,
-        path: &str,
+        path: S,
         handler: H,
     ) {
         self.route(Method::GET, path, handler);
@@ -507,6 +570,8 @@ impl Router {
     /// Adds a [POST](Method::POST) request handler.
     ///
     /// # Examples
+    ///
+    /// ## Simple
     ///
     /// ```rust
     /// # use direkuta::prelude::*;
@@ -517,11 +582,18 @@ impl Router {
     ///         });
     ///     });
     /// ```
+    ///
+    /// ```
+    /// "/" : {  } {
+    ///     POST => "Hello World!"
+    /// }
+    /// ```
     pub fn post<
+        S: Into<String>,
         H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
     >(
         &mut self,
-        path: &str,
+        path: S,
         handler: H,
     ) {
         self.route(Method::POST, path, handler);
@@ -530,6 +602,8 @@ impl Router {
     /// Adds a [PUT](Method::PUT) request handler.
     ///
     /// # Examples
+    ///
+    /// ## Simple
     ///
     /// ```rust
     /// # use direkuta::prelude::*;
@@ -540,11 +614,18 @@ impl Router {
     ///         });
     ///     });
     /// ```
+    ///
+    /// ```
+    /// "/" : {  } {
+    ///     PUT => "Hello World!"
+    /// }
+    /// ```
     pub fn put<
+        S: Into<String>,
         H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
     >(
         &mut self,
-        path: &str,
+        path: S,
         handler: H,
     ) {
         self.route(Method::PUT, path, handler);
@@ -553,6 +634,8 @@ impl Router {
     /// Adds a [DELETE](Method::DELETE) request handler.
     ///
     /// # Examples
+    ///
+    /// ## Simple
     ///
     /// ```rust
     /// # use direkuta::prelude::*;
@@ -563,11 +646,18 @@ impl Router {
     ///         });
     ///     });
     /// ```
+    ///
+    /// ```
+    /// "/" : {  } {
+    ///     DELETE => "Hello World!"
+    /// }
+    /// ```
     pub fn delete<
+        S: Into<String>,
         H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
     >(
         &mut self,
-        path: &str,
+        path: S,
         handler: H,
     ) {
         self.route(Method::DELETE, path, handler);
@@ -576,6 +666,8 @@ impl Router {
     /// Adds a [HEAD](Method::HEAD) request handler.
     ///
     /// # Examples
+    ///
+    /// ## Simple
     ///
     /// ```rust
     /// # use direkuta::prelude::*;
@@ -586,11 +678,18 @@ impl Router {
     ///         });
     ///     });
     /// ```
+    ///
+    /// ```
+    /// "/" : {  } {
+    ///     HEAD => "Hello World!"
+    /// }
+    /// ```
     pub fn head<
+        S: Into<String>,
         H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
     >(
         &mut self,
-        path: &str,
+        path: S,
         handler: H,
     ) {
         self.route(Method::HEAD, path, handler);
@@ -599,6 +698,8 @@ impl Router {
     /// Adds a [OPTIONS](Method::OPTIONS) request handler.
     ///
     /// # Examples
+    ///
+    /// ## Simple
     ///
     /// ```rust
     /// # use direkuta::prelude::*;
@@ -609,11 +710,18 @@ impl Router {
     ///         });
     ///     });
     /// ```
+    ///
+    /// ```
+    /// "/" : {  } {
+    ///     OPTIONS => "Hello World!"
+    /// }
+    /// ```
     pub fn options<
+        S: Into<String>,
         H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
     >(
         &mut self,
-        path: &str,
+        path: S,
         handler: H,
     ) {
         self.route(Method::OPTIONS, path, handler);
@@ -622,6 +730,8 @@ impl Router {
     /// Create a path for multiple request types.
     ///
     /// # Examples
+    ///
+    /// ## Simple
     ///
     /// ```rust
     /// # use direkuta::prelude::*;
@@ -634,20 +744,35 @@ impl Router {
     ///         });
     ///     });
     /// ```
-    pub fn path<F: Fn(&mut Router) + Send + Sync + 'static>(&mut self, path: &str, sub: F) {
+    ///
+    /// ```
+    /// "/parent/child" : {  } {
+    ///     GET => "Hello World!"
+    /// }
+    /// ```
+    pub fn path<
+        S: Into<String>,
+        F: Fn(&mut Router) + Send + Sync + 'static
+    >(
+        &mut self,
+        path: S,
+        sub: F
+    ) {
         let mut builder = Router::new();
 
         sub(&mut builder);
+
+        let path = path.into();
 
         // Loop through new methods
         for (method, routes) in builder.inner {
             // Loop through new routes
             for route in routes {
                 // Concat paths
-                let path = format!("{}{}", path, route.path);
+                let npath = format!("{}{}", path, route.path);
 
                 // Transform the path in to ids and regex
-                let reader = self.read(&path);
+                let reader = self.read(&npath);
 
                 self.inner
                     .entry(method.clone())
@@ -655,7 +780,7 @@ impl Router {
                     .push(Route {
                         handler: route.handler,
                         ids: reader.0,
-                        path,
+                        path: npath,
                         pattern: reader.1,
                     });
             }
@@ -710,8 +835,8 @@ impl Router {
     }
 
     /// Parse each path into a vector of ids and a regex pattern
-    fn read(&self, path: &str) -> (SmallVec<[String; 32]>, Regex) {
-        let mut ids: SmallVec<[String; 32]> = SmallVec::new();
+    fn read(&self, path: &str) -> (SmallVec<[String; 64]>, Regex) {
+        let mut ids: SmallVec<[String; 64]> = SmallVec::new();
         let mut pattern = String::new();
 
         let mut mode = Mode::Look;

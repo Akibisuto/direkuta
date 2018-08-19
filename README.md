@@ -65,14 +65,14 @@ Each middleware has two states, before the response was created, and after the r
 
 ## Helpers
 
-Direkuta comes with two features (enabled by default), HTML template support with [Tera](https://github.com/Keats/tera), and JSON support with [Serde](https://github.com/serde-rs/serde) adn [Serde JSON](https://github.com/serde-rs/json).
+Direkuta comes with two features (enabled by default), HTML template support with [Tera](https://github.com/Keats/tera), and JSON support with [Serde](https://github.com/serde-rs/serde) and [Serde JSON](https://github.com/serde-rs/json).
 
 Tera is accessable through `State`, and uses the `templates/**/*` folder for tempaltes.
 
 ```rust
 extern crate direkuta;
 
-use direkuta::prelude::*;
+use direkuta::prelude::*;sp
 use direkuta::prelude::html::*;
 
 fn main() {
@@ -130,3 +130,28 @@ JSON Response:
   "status": "OK"
 }
 ```
+
+## Routing
+
+Direkuta has a ID/Regex based routing system in the format of `/<name:(.*)>/`, the capture from the request can later be accessed with `c.get("name")`.
+
+Like so (from `/examples`):
+
+```rust
+extern crate direkuta;
+
+use direkuta::prelude::*;
+
+fn main() {
+    Direkuta::new()
+        .route(|r| {
+            r.get("/<name:(.+)>", |_, _, c| {
+                Response::new().with_body(c.get("name").unwrap().as_str())
+            });
+        }).run("0.0.0.0:3000");
+}
+```
+
+The routing system also has paths which allow you to group other paths under a section of the url.
+
+Soon their will also be a group which allows you to group handlers under one path.

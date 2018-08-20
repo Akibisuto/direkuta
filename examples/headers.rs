@@ -8,11 +8,11 @@ fn main() {
     Direkuta::new()
         .route(|r| {
             r.get("/", |_, _, _| {
-                let mut res = Response::new().with_body("Hello World!");
-                res.set_headers(headermap! {
-                    header::CONTENT_TYPE => "text/plain",
-                });
-                res
+                Response::new()
+                    .with_headers(headermap! {
+                        header::CONTENT_TYPE => "text/plain",
+                    })
+                    .with_body("Hello World!")
             });
         }).run("0.0.0.0:3000");
 }

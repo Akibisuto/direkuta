@@ -275,9 +275,9 @@ impl Service for Direkuta {
 /// }
 /// ```
 pub trait Middle {
-    /// Called before a request is sent through [RouteRecognizer](RouteRecognizer)
+    /// Called before a request is sent through [Router](Router)
     fn before(&self, &mut Request);
-    /// Called after a request is sent through [RouteRecognizer](RouteRecognizer)
+    /// Called after a request is sent through [Router](Router)
     fn after(&self, &mut Request, &mut Response);
 }
 
@@ -599,7 +599,7 @@ impl Router {
     /// "/txuritan" : { "name" => "txuritan" } {
     ///     GET => "txuritan"
     /// }
-    /// ```ignore
+    /// ```
     pub fn route<
         S: Into<String>,
         H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
@@ -1045,6 +1045,12 @@ impl Response {
     /// Set Response's HTTP headers.
     pub fn set_headers(&mut self, headers: HeaderMap<HeaderValue>) {
         self.parts.headers.extend(headers);
+    }
+
+    /// Builder set Response's HTTP headers.
+    pub fn with_headers(mut self, headers: HeaderMap<HeaderValue>) -> Self {
+        self.parts.headers.extend(headers);
+        self
     }
 
     /// Return Response HTTP status code.
@@ -1584,7 +1590,7 @@ pub mod prelude {
         pub use tera::{Context, Tera};
     }
 
-    /// Imports the required parts from [Hyper](Hyper).
+    /// Imports the required parts from Hyper.
     ///
     /// You'll need this if you want to create a handler that doesn't have a function
     /// or if you want to set response Headers.

@@ -32,29 +32,39 @@ All ran on an Intel i3 8100 @ 3.60GHz.
 Hyper Hello Example (Release):
 
 ```console
-$ wrk -t20 -c400 -d10s http://0.0.0.0:3000/
-Running 10s test @ http://0.0.0.0:3000/
-  20 threads and 400 connections
+$ wrk -t10 -c400 -d30s http://0.0.0.0:3000/ --latency
+Running 30s test @ http://0.0.0.0:3000/
+  10 threads and 400 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     8.07ms    5.44ms  42.40ms   65.97%
-    Req/Sec     1.33k   246.38     5.66k    78.02%
-  265182 requests in 10.10s, 22.25MB read
-Requests/sec:  26267.59
-Transfer/sec:      2.20MB
+    Latency     7.77ms    4.63ms  31.50ms   64.66%
+    Req/Sec     2.67k   328.58     5.49k    71.73%
+  Latency Distribution
+     50%    7.14ms
+     75%   11.16ms
+     90%   14.34ms
+     99%   18.95ms
+  798726 requests in 30.10s, 67.03MB read
+Requests/sec:  26540.04
+Transfer/sec:      2.23MB
 ```
 
 Direkuta Hello Example (Release):
 
 ```console
-$ wrk -t20 -c400 -d10s http://0.0.0.0:3000/
-Running 10s test @ http://0.0.0.0:3000/
-  20 threads and 400 connections
+$ wrk -t10 -c400 -d30s http://0.0.0.0:3000/ --latency
+Running 30s test @ http://0.0.0.0:3000/
+  10 threads and 400 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     8.52ms    5.34ms  39.38ms   66.26%
-    Req/Sec     1.26k   203.46     4.36k    77.51%
-  253031 requests in 10.10s, 21.24MB read
-Requests/sec:  25049.60
-Transfer/sec:      2.10MB
+    Latency     8.18ms    4.71ms  29.13ms   63.69%
+    Req/Sec     2.55k   313.33     6.62k    74.55%
+  Latency Distribution
+     50%    7.63ms
+     75%   11.74ms
+     90%   14.81ms
+     99%   19.25ms
+  759382 requests in 30.09s, 63.73MB read
+Requests/sec:  25233.36
+Transfer/sec:      2.12MB
 ```
 
 ## Middleware

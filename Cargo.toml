@@ -64,4 +64,4 @@ html = ["tera"]
 json = ["serde", "serde_derive", "serde_json"]
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["html", "json"]

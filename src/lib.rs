@@ -68,14 +68,14 @@ use tera::Tera;
 pub struct Direkuta {
     /// Store state as its own type.
     state: Arc<State>,
-    /// Stores middleware, to be later used in [Service::call](Service::call).
+    /// Stores middleware, to be later used in Service::call.
     middle: Arc<IndexMap<TypeId, Box<Middle + Send + Sync + 'static>>>,
     /// The router, it knows where a url is meant to go.
     routes: Arc<Router>,
 }
 
 impl Direkuta {
-    /// Constructs a new [Direkuta](Direkuta).
+    /// Constructs a new Direkuta.
     ///
     /// # Examples
     ///
@@ -87,7 +87,7 @@ impl Direkuta {
         Direkuta::default()
     }
 
-    /// Insert a state into [Direkuta](Direkuta).
+    /// Insert a state into server.
     ///
     /// # Examples
     ///
@@ -98,6 +98,7 @@ impl Direkuta {
     /// ```
     ///
     /// # Panics
+    ///
     /// Do not use this from anywhere else but the main constructor.
     /// Using this from any else will cause a thread panic.
     pub fn state<T: Any + Send + Sync + 'static>(mut self, state: T) -> Self {
@@ -107,9 +108,9 @@ impl Direkuta {
         self
     }
 
-    /// Insert a middleware into [Direkuta](Direkuta).
+    /// Insert a middleware into server.
     ///
-    /// Middleware is anything that implements the trait [Middle](Middle).
+    /// Middleware is anything that implements the trait Middle.
     ///
     /// # Examples
     ///
@@ -150,7 +151,7 @@ impl Direkuta {
         self
     }
 
-    /// Run [Direkuta](Direkuta) as a Hyper server.
+    /// Run server as a Hyper server.
     ///
     /// # Examples
     ///
@@ -273,9 +274,9 @@ impl Service for Direkuta {
 /// }
 /// ```
 pub trait Middle {
-    /// Called before a request is sent through [Router](Router)
+    /// Called before a request is sent through Router.
     fn before(&self, &mut Request);
-    /// Called after a request is sent through [Router](Router)
+    /// Called after a request is sent through Router.
     fn after(&self, &mut Request, &mut Response);
 }
 
@@ -291,7 +292,7 @@ pub trait Middle {
 pub struct Logger {}
 
 impl Logger {
-    /// Constructs a new [Logger](Logger).
+    /// Constructs a new Logger.
     pub fn new() -> Self {
         Logger::default()
     }
@@ -313,15 +314,15 @@ impl Default for Logger {
     }
 }
 
-/// A wrapper around [IndexMap](indexmap::IndexMap)<[TypeId](std::any::TypeId), [Any](std::any::Any)>, used to store [Direkuta](Direkuta) state.
+/// A wrapper around IndexMap<TypeId, Any>, used to store server state.
 ///
-/// Stored state cannot be dynamically create and must be static.
+/// Stored state cannot be dynamically created and must be static.
 pub struct State {
     inner: IndexMap<TypeId, Box<Any + Send + Sync + 'static>>,
 }
 
 impl State {
-    /// Constructs a new [State](State)
+    /// Constructs a new State.
     ///
     /// # Examples
     ///
@@ -378,7 +379,7 @@ impl State {
 
     /// Get a value based on type.
     ///
-    /// This is a wrapper around [try_get](State::try_get).
+    /// This is a wrapper around try_get.
     ///
     /// # Examples
     ///
@@ -393,7 +394,7 @@ impl State {
     ///
     /// # Panics
     ///
-    /// If the key does not exist the function will panic
+    /// If the key does not exist the function will panic.
     ///
     /// If you do not know if the type exists use `try_get`.
     pub fn get<T: Any + Send + Sync + 'static>(&self) -> &T {
@@ -412,7 +413,7 @@ impl Default for State {
 
 type Handler = Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static;
 
-/// THe current mode of the router path parser.
+/// The current mode of the router path parser.
 enum Mode {
     /// Currently writing the id of the capture.
     Id,
@@ -422,7 +423,7 @@ enum Mode {
     Look,
 }
 
-/// A wrapper around [IndexMap](indexmap::IndexMap)<[String](String), [String](String)>.
+/// A wrapper around IndexMap<String, String>.
 ///
 /// Stores the captures for a given request.
 pub struct Capture {
@@ -430,7 +431,7 @@ pub struct Capture {
 }
 
 impl Capture {
-    /// Constructs a new [Capture](Capture)
+    /// Constructs a new Capture.
     ///
     /// # Examples
     ///
@@ -454,10 +455,7 @@ impl Capture {
     ///
     /// capture.set("message", "Hello World!");
     /// ```
-    pub fn set<
-        K: Into<String>,
-        V: Into<String>,
-    >(&mut self, key: K, value: V) {
+    pub fn set<K: Into<String>, V: Into<String>>(&mut self, key: K, value: V) {
         let _ = self.inner.insert(key.into(), value.into());
     }
 
@@ -488,7 +486,7 @@ impl Capture {
 
     /// Get a value based on key.
     ///
-    /// This is a wrapper around [try_get](Capture::try_get).
+    /// This is a wrapper around try_get.
     ///
     /// # Examples
     ///
@@ -521,9 +519,9 @@ impl Default for Capture {
     }
 }
 
-/// Router.
+/// Internal route, stores the handler and path details.
 ///
-/// This is not to be used directly, it is only used for [Direkuta.route](Direkuta::route).
+/// This is not to be used directly, it is only used for Direkuta.route.
 struct Route {
     handler: Box<Handler>,
     ids: Vec<String>,
@@ -533,7 +531,7 @@ struct Route {
 
 /// Router.
 ///
-/// This is not to be used directly, it is only used for [Direkuta.route](Direkuta::route).
+/// This is not to be used directly, it is only used for Direkuta.route.
 ///
 /// All examples for routing are shown with 'output' or what the paths will look like
 /// and what the response would look like when called.
@@ -611,18 +609,15 @@ impl Router {
         // Transform the path in to ids and regex
         let reader = self.read(&path);
 
-        self.inner
-            .entry(method)
-            .or_insert(Vec::new())
-            .push(Route {
-                handler: Box::new(handler),
-                ids: reader.0,
-                path,
-                pattern: reader.1,
-            });
+        self.inner.entry(method).or_insert(Vec::new()).push(Route {
+            handler: Box::new(handler),
+            ids: reader.0,
+            path,
+            pattern: reader.1,
+        });
     }
 
-    /// Adds a [GET](Method::GET) request handler.
+    /// Adds a GET request handler.
     ///
     /// # Examples
     ///
@@ -673,7 +668,7 @@ impl Router {
         self.route(Method::GET, path, handler);
     }
 
-    /// Adds a [POST](Method::POST) request handler.
+    /// Adds a POST request handler.
     ///
     /// # Examples
     ///
@@ -705,7 +700,7 @@ impl Router {
         self.route(Method::POST, path, handler);
     }
 
-    /// Adds a [PUT](Method::PUT) request handler.
+    /// Adds a PUT request handler.
     ///
     /// # Examples
     ///
@@ -737,7 +732,7 @@ impl Router {
         self.route(Method::PUT, path, handler);
     }
 
-    /// Adds a [DELETE](Method::DELETE) request handler.
+    /// Adds a DELETE request handler.
     ///
     /// # Examples
     ///
@@ -769,7 +764,7 @@ impl Router {
         self.route(Method::DELETE, path, handler);
     }
 
-    /// Adds a [HEAD](Method::HEAD) request handler.
+    /// Adds a HEAD request handler.
     ///
     /// # Examples
     ///
@@ -801,7 +796,7 @@ impl Router {
         self.route(Method::HEAD, path, handler);
     }
 
-    /// Adds a [OPTIONS](Method::OPTIONS) request handler.
+    /// Adds a OPTIONS request handler.
     ///
     /// # Examples
     ///
@@ -856,13 +851,10 @@ impl Router {
     ///     GET => "Hello World!"
     /// }
     /// ```
-    pub fn path<
-        S: Into<String>,
-        F: Fn(&mut Router) + Send + Sync + 'static
-    >(
+    pub fn path<S: Into<String>, F: Fn(&mut Router) + Send + Sync + 'static>(
         &mut self,
         path: S,
-        sub: F
+        sub: F,
     ) {
         let mut builder = Router::new();
 
@@ -894,11 +886,7 @@ impl Router {
     }
 
     /// When a request is received this is called to find a handler.
-    fn recognize(
-        &self,
-        method: &Method,
-        path: &str,
-    ) -> Result<(&Handler, Capture), StatusCode> {
+    fn recognize(&self, method: &Method, path: &str) -> Result<(&Handler, Capture), StatusCode> {
         // Get method
         let routes = self.inner.get(method).ok_or(StatusCode::NOT_FOUND)?;
 
@@ -964,7 +952,16 @@ impl Router {
             }
         }
 
-        (ids, Regex::new(&self.normalize(&pattern)).expect("Not a valid regex pattern"))
+        (
+            ids,
+            match Regex::new(&self.normalize(&pattern)) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("Regex pattern error: {}", e);
+                    ::std::process::exit(1);
+                }
+            },
+        )
     }
 
     /// Normalizes the regex paths.
@@ -992,14 +989,14 @@ impl Default for Router {
     }
 }
 
-/// A wrapper around [Hyper Response](hyper::Response).
+/// A wrapper around Hyper Response.
 pub struct Response {
     body: Body,
     parts: response::Parts,
 }
 
 impl Response {
-    /// Constructs a new `Response`.
+    /// Constructs a new Response.
     ///
     /// # Examples
     ///
@@ -1161,7 +1158,7 @@ impl Response {
     }
 
     // TODO: Change this into a builder closure, with string, file, and template functions.
-    /// Wrapper around [Response.set_body](Response::set_body) for the HTML context type.
+    /// Wrapper around Response.set_body for the HTML context type.
     pub fn html<T: Into<String>>(&mut self, html: T) {
         let _ = self
             .headers_mut()
@@ -1170,7 +1167,7 @@ impl Response {
         self.set_body(html);
     }
 
-    /// Wrapper around [Response.set_body](Response::set_body) for the CSS context type.
+    /// Wrapper around Response.set_body for the CSS context type.
     pub fn css<F: Fn(&mut CssBuilder)>(&mut self, css: F) {
         let _ = self
             .headers_mut()
@@ -1183,13 +1180,13 @@ impl Response {
         self.set_body(builder.get_body());
     }
 
-    /// Wrapper around [Response.set_body](Response::set_body) for the CSS context type.
+    /// Wrapper around Response.set_body for the CSS context type.
     pub fn with_css<F: Fn(&mut CssBuilder)>(mut self, css: F) -> Self {
         self.css(css);
         self
     }
 
-    /// Wrapper around [Response.set_body](Response::set_body) for the JS context type.
+    /// Wrapper around Response.set_body for the JS context type.
     pub fn js<F: Fn(&mut JsBuilder)>(&mut self, js: F) {
         let _ = self.headers_mut().insert(
             header::CONTENT_TYPE,
@@ -1203,13 +1200,13 @@ impl Response {
         self.set_body(builder.get_body());
     }
 
-    /// Wrapper around [Response.set_body](Response::set_body) for the JS context type.
+    /// Wrapper around Response.set_body for the JS context type.
     pub fn with_js<F: Fn(&mut JsBuilder)>(mut self, js: F) -> Self {
         self.js(js);
         self
     }
 
-    /// Wrapper around [Response.set_body](Response::set_body) for the JSON context type.
+    /// Wrapper around Response.set_body for the JSON context type.
     ///
     /// # Examples
     ///
@@ -1246,7 +1243,7 @@ impl Response {
         self.set_body(builder.get_body());
     }
 
-    /// Builder function for Json responses
+    /// Builder function for Json responses.
     ///
     /// # Examples
     ///
@@ -1292,8 +1289,6 @@ impl Default for Response {
 }
 
 /// A builder function for CSS Responses.
-///
-/// Do not directly use.
 pub struct CssBuilder {
     inner: String,
 }
@@ -1307,7 +1302,7 @@ impl CssBuilder {
         self.inner.as_str()
     }
 
-    /// Load from [File](std::fs::File).
+    /// Load from File.
     pub fn file(&mut self, mut file: File) {
         match file.read_to_string(&mut self.inner) {
             Ok(_) => {}
@@ -1325,8 +1320,6 @@ impl Default for CssBuilder {
 }
 
 /// A builder function for JS Responses.
-///
-/// Do not directly use.
 pub struct JsBuilder {
     inner: String,
 }
@@ -1340,7 +1333,7 @@ impl JsBuilder {
         self.inner.as_str()
     }
 
-    /// Load from [File](std::fs::File).
+    /// Load from File.
     pub fn file(&mut self, mut file: File) {
         match file.read_to_string(&mut self.inner) {
             Ok(_) => {}
@@ -1358,8 +1351,6 @@ impl Default for JsBuilder {
 }
 
 /// A builder for JSON responses.
-///
-/// Do not directly use.
 #[cfg(feature = "json")]
 pub struct JsonBuilder<T: Serialize + Send + Sync> {
     /// Json response wrapper to be sent.
@@ -1368,7 +1359,7 @@ pub struct JsonBuilder<T: Serialize + Send + Sync> {
 
 #[cfg(feature = "json")]
 impl JsonBuilder<()> {
-    /// Creates a [JsonBuilder](JsonBuilder) with given type.
+    /// Creates a JsonBuilder with given type.
     fn new<T: Serialize + Send + Sync>() -> JsonBuilder<T> {
         JsonBuilder::default()
     }
@@ -1388,12 +1379,12 @@ impl<T: Serialize + Send + Sync> JsonBuilder<T> {
     }
 
     /// Added an error message to the wrapper.
-    pub fn error(&mut self, message: &str) {
+    pub fn error<S: Into<String>>(&mut self, message: S) {
         self.wrapper.add_message(message);
     }
 
     /// Added an error message to the wrapper.
-    pub fn errors(&mut self, messages: Vec<&str>) {
+    pub fn errors<S: Into<String>>(&mut self, messages: Vec<S>) {
         for message in messages {
             self.wrapper.add_message(message);
         }
@@ -1401,14 +1392,14 @@ impl<T: Serialize + Send + Sync> JsonBuilder<T> {
 
     /// Set the status code of the Json response.
     ///
-    /// This can be gotten with [StatusCode.as_u16](StatusCode::as_u16).
+    /// This can be gotten with StatusCode.as_u16.
     pub fn code(&mut self, status: u16) {
         self.wrapper.set_code(status);
     }
 
     /// Set the status code of the Json response.
     ///
-    /// This can be gotten with [StatusCode.as_u16](StatusCode::as_u16).
+    /// This can be gotten with StatusCode.as_u16.
     pub fn with_code(mut self, status: u16) -> Self {
         self.code(status);
         self
@@ -1416,14 +1407,14 @@ impl<T: Serialize + Send + Sync> JsonBuilder<T> {
 
     /// Set the status string of the Json response.
     ///
-    /// This can be gotten with [StatusCode.as_str](StatusCode::as_str).
-    pub fn status(&mut self, status: &str) {
+    /// This can be gotten with StatusCode.as_str.
+    pub fn status<S: Into<String>>(&mut self, status: S) {
         self.wrapper.set_status(status);
     }
 
     /// Set the status string of the Json response.
     ///
-    /// This can be gotten with [StatusCode.as_str](StatusCode::as_str).
+    /// This can be gotten with StatusCode.as_str.
     pub fn with_status(mut self, status: &str) -> Self {
         self.status(status);
         self
@@ -1454,23 +1445,27 @@ struct Wrapper<T: Serialize + Send + Sync> {
 
 #[cfg(feature = "json")]
 impl<T: Serialize + Send + Sync> Wrapper<T> {
-    /// Constructs a new `Wrapper<T>`
+    /// Constructs a new Wrapper.
     fn new() -> Wrapper<T> {
         Wrapper::default()
     }
 
-    fn add_message(&mut self, message: &str) {
-        self.messages.push(String::from(message));
+    /// Add error message to response wrapper.
+    fn add_message<S: Into<String>>(&mut self, message: S) {
+        self.messages.push(message.into());
     }
 
+    /// Set the response status code.
     fn set_code(&mut self, code: u16) {
         self.code = code;
     }
 
-    fn set_status(&mut self, status: &str) {
-        self.status = String::from(status);
+    /// Set the response status string.
+    fn set_status<S: Into<String>>(&mut self, status: s) {
+        self.status = status.into();
     }
 
+    /// Set the wrapped response.
     fn set_result(&mut self, result: T) {
         self.result = Some(result);
     }
@@ -1483,19 +1478,19 @@ impl<T: Serialize + Send + Sync> Default for Wrapper<T> {
             code: 200,
             messages: Vec::new(),
             result: None,
-            status: String::from("OK"),
+            status: "OK",
         }
     }
 }
 
-/// A wrapper around [Hyper Request](hyper::Request).
+/// A wrapper around Hyper Request.
 pub struct Request {
     body: Body,
     parts: request::Parts,
 }
 
 impl Request {
-    /// Constructs a new [Request](Request).
+    /// Constructs a new Request.
     pub fn new(body: Body, parts: request::Parts) -> Self {
         Self { body, parts }
     }
@@ -1531,7 +1526,7 @@ impl Request {
     }
 }
 
-/// Creates a [HeaderMap](HeaderMap) from a list of key-value pairs.
+/// Creates a HeaderMap from a list of key-value pairs.
 ///
 /// # Examples
 ///
@@ -1546,11 +1541,10 @@ impl Request {
 /// Direkuta::new()
 ///     .route(|r| {
 ///         r.get("/", |_, _, _| {
-///             let mut res = Response::new().with_body("Hello World!");
-///             res.set_headers(headermap! {
-///                 header::CONTENT_TYPE => "text/plain",
-///             });
-///             res
+///             Response::new()
+///                 .with_headers(headermap! {
+///                     header::CONTENT_TYPE => "text/plain",
+///                 }).with_body("Hello World!")
 ///         });
 ///     });
 /// # }
@@ -1573,11 +1567,11 @@ macro_rules! headermap {
     };
 }
 
-/// Imports just the required parts of [Direkuta](Direkuta).
+/// Imports just the required parts of Direkuta.
 pub mod prelude {
     pub use super::{Capture, Direkuta, Logger, Middle, Request, Response, State};
 
-    /// Imports the required parts from [Tera](Tera).
+    /// Imports the required parts from Tera.
     ///
     /// You'll need to import this if you want to use Tera templates.
     #[cfg(feature = "html")]

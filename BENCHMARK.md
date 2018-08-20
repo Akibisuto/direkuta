@@ -54,21 +54,23 @@ Transfer/sec:      2.23MB
 
 ## Actix (a677dc8a92003405a8f2331e6126e1f685e5acaa)
 
+This is the only modified example, I removed all logging and left only the `/` handler.
+
 ```console
 $ wrk -t10 -c400 -d30s http://0.0.0.0:8080/ --latency
 Running 30s test @ http://0.0.0.0:8080/
   10 threads and 400 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency    55.59ms    5.82ms 117.78ms   98.60%
-    Req/Sec   722.08     45.86     1.82k    75.09%
+    Latency     3.71ms    2.22ms  20.70ms   68.55%
+    Req/Sec     5.56k   600.61    13.04k    72.09%
   Latency Distribution
-     50%   55.13ms
-     75%   55.32ms
-     90%   55.49ms
-     99%  107.47ms
-  215516 requests in 30.09s, 26.51MB read
-Requests/sec:   7162.27
-Transfer/sec:      0.88MB
+     50%    3.35ms
+     75%    5.04ms
+     90%    6.75ms
+     99%   10.14ms
+  1659825 requests in 30.10s, 204.20MB read
+Requests/sec:  55151.73
+Transfer/sec:      6.78MB
 ```
 
 ## Gotham (d31462a1f91b900d720d035b127fa8e9ece66785)

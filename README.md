@@ -69,7 +69,7 @@ Transfer/sec:      2.12MB
 
 ## Middleware
 
-Direkuta supports middleware that impliment the `Middle` trait. Direkuta comes with an example Logger middleware that can be used.
+Direkuta supports middleware that implement the `Middle` trait. Direkuta comes with an example Logger middleware that can be used.
 
 Each middleware has two states, before the response was created, and after the response has been created.
 
@@ -77,7 +77,7 @@ Each middleware has two states, before the response was created, and after the r
 
 Direkuta comes with two features (enabled by default), HTML template support with [Tera](https://github.com/Keats/tera), and JSON support with [Serde](https://github.com/serde-rs/serde) and [Serde JSON](https://github.com/serde-rs/json).
 
-Tera is accessable through `State`, and uses the `templates/**/*` folder for tempaltes.
+Tera is accessible through `State`, and uses the `templates/**/*` folder for templates.
 
 ```rust
 extern crate direkuta;
@@ -156,7 +156,7 @@ fn main() {
     Direkuta::new()
         .route(|r| {
             r.get("/<name:(.+)>", |_, _, c| {
-                Response::new().with_body(c.get("name").unwrap().as_str())
+                Response::new().with_body(c.get("name"))
             });
         }).run("0.0.0.0:3000");
 }

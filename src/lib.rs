@@ -2,9 +2,15 @@
 //!
 //! # Examples
 //!
+//! Please note that none of these are tested due to Direkuta being a web sever.
+//!
+//! If, for some reason, they don't work, have a look at the examples folder.
+//!
+//! ## Simple
+//!
 //! ```rust,ignore
-//! # use direkuta::prelude::*;
-//! // Not tested due to the fact that its a web server.
+//! use direkuta::prelude::*;
+//!
 //! Direkuta::new()
 //!     .route(|r| {
 //!         r.get("/", |_, _, _| {
@@ -13,6 +19,73 @@
 //!     })
 //!     .run("0.0.0.0:3000");
 //! ```
+//!
+//! ## Tera Templates
+//!
+//! ```rust,ignore
+//! extern crate direkuta;
+//!
+//! use direkuta::prelude::*;sp
+//! use direkuta::prelude::html::*;
+//!
+//! fn main() {
+//!     Direkuta::new()
+//!         .route(|r| {
+//!             r.get("/", |_, s, _| {
+//!                 Response::new().with_body(s
+//!                     .get::<Tera>()
+//!                     .render(Context::new(), "index.html")
+//!                     .unwrap())
+//!             });
+//!         }).run("0.0.0.0:3000");
+//! }
+//! ```
+//!
+//! ## JSON
+//!
+//! ```rust,ignore
+//! extern crate direkuta;
+//! #[macro_use]
+//! extern crate serde_derive;
+//!
+//! use direkuta::prelude::*;
+//!
+//! #[derive(Serialize)]
+//! struct Example {
+//!     hello: String,
+//! }
+//!
+//! fn main() {
+//!     Direkuta::new()
+//!         .route(|r| {
+//!             r.get("/", |_, _, _| {
+//!                 Response::new().with_json(|j| {
+//!                     j.body(Example {
+//!                         hello: String::from("world"),
+//!                     });
+//!                 })
+//!             });
+//!         }).run("0.0.0.0:3000");
+//! }
+//! ```
+//!
+//! ## Routing
+//!
+//! ```rust,ignore
+//! extern crate direkuta;
+//!
+//! use direkuta::prelude::*;
+//!
+//! fn main() {
+//!     Direkuta::new()
+//!         .route(|r| {
+//!             r.get("/<name:(.+)>", |_, _, c| {
+//!                 Response::new().with_body(c.get("name"))
+//!             });
+//!         }).run("0.0.0.0:3000");
+//! }
+//! ```
+//!
 
 #![deny(
     missing_docs,

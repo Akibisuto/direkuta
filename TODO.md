@@ -30,7 +30,7 @@
   - [x] JSON
   - [ ] Tera
 - [ ] Large File Streaming
-  - futures-fs and Hyper `Body::pair`?
+  - futures-fs/tokio-fs and Hyper `Body::pair`?
 
 ## Future
 

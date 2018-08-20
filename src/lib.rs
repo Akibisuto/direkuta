@@ -111,7 +111,7 @@ impl Direkuta {
 
     /// Insert a middleware into [Direkuta](Direkuta).
     ///
-    /// Middleware is anything that impliments the trait [Middle](Middle).
+    /// Middleware is anything that implements the trait [Middle](Middle).
     ///
     /// # Examples
     ///
@@ -316,7 +316,7 @@ impl Default for Logger {
     }
 }
 
-/// A wrapper around [HashMap](std::collections::HashMap)<[TypeId](std::any::TypeId), [Any](std::any::Any)>, used to store [Direkuta](Direkuta) state.
+/// A wrapper around [IndexMap](indexmap::IndexMap)<[TypeId](std::any::TypeId), [Any](std::any::Any)>, used to store [Direkuta](Direkuta) state.
 ///
 /// Stored state cannot be dynamically create and must be static.
 pub struct State {
@@ -413,12 +413,115 @@ impl Default for State {
     }
 }
 
-type Handler = Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static;
+type Handler = Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static;
 
+/// THe current mode of the router path parser.
 enum Mode {
+    /// Currently writing the id of the capture.
     Id,
+    /// Currently writing the regex of the capture.
     Regex,
+    /// Looking for another Id or push any other character.
     Look,
+}
+
+/// A wrapper around [IndexMap](indexmap::IndexMap)<[String](String), [String](String)>.
+///
+/// Stores the captures for a given request.
+pub struct Capture {
+    inner: IndexMap<String, String>,
+}
+
+impl Capture {
+    /// Constructs a new [Capture](Capture)
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::prelude::*;
+    /// let capture = Capture::new();
+    /// ```
+    pub fn new() -> Self {
+        Capture::default()
+    }
+
+    /// Sets the value of whatever key is passed.
+    ///
+    /// Please note that you cannot have two of the same keys, one will overwrite the other.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::prelude::*;
+    /// let capture = Capture::new();
+    ///
+    /// capture.set("message", "Hello World!");
+    /// ```
+    pub fn set<
+        K: Into<String>,
+        V: Into<String>,
+    >(&mut self, key: K, value: V) {
+        let _ = self.inner.insert(key.into(), value.into());
+    }
+
+    /// Attempt to get a value based on key.
+    ///
+    /// Use this if you are not sure if the key exists.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::prelude::*;
+    /// let capture = Capture::new();
+    ///
+    /// capture.set("message", "Hello World!");
+    ///
+    /// match capture.try_get("message") {
+    ///     Some(s) => {
+    ///         println!("{}", s);
+    ///     },
+    ///     None => {
+    ///         println!("Key not found in capture");
+    ///     },
+    /// }
+    /// ```
+    pub fn try_get<S: Into<String>>(&self, key: S) -> Option<&String> {
+        self.inner.get(&key.into())
+    }
+
+    /// Get a value based on key.
+    ///
+    /// This is a wrapper around [try_get](Capture::try_get).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::prelude::*;
+    /// let capture = Capture::new();
+    ///
+    /// capture.set("message", "Hello World!");
+    ///
+    /// println!("{}", capture.get("message"));
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// If the key does not exist the function will panic
+    ///
+    /// If you do not know if the key exists use `try_get`.
+    pub fn get<S: Into<String>>(&self, key: S) -> &str {
+        let key = key.into();
+        self.try_get(key.as_str())
+            .unwrap_or_else(|| panic!("Key not found in captures: {}", key))
+    }
+}
+
+impl Default for Capture {
+    fn default() -> Capture {
+        Capture {
+            inner: IndexMap::new(),
+        }
+    }
 }
 
 /// Router.
@@ -499,7 +602,7 @@ impl Router {
     /// ```ignore
     pub fn route<
         S: Into<String>,
-        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
     >(
         &mut self,
         method: Method,
@@ -517,7 +620,7 @@ impl Router {
             .push(Route {
                 handler: Box::new(handler),
                 ids: reader.0,
-                path: path,
+                path,
                 pattern: reader.1,
             });
     }
@@ -564,7 +667,7 @@ impl Router {
     /// ```
     pub fn get<
         S: Into<String>,
-        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
     >(
         &mut self,
         path: S,
@@ -596,7 +699,7 @@ impl Router {
     /// ```
     pub fn post<
         S: Into<String>,
-        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
     >(
         &mut self,
         path: S,
@@ -628,7 +731,7 @@ impl Router {
     /// ```
     pub fn put<
         S: Into<String>,
-        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
     >(
         &mut self,
         path: S,
@@ -660,7 +763,7 @@ impl Router {
     /// ```
     pub fn delete<
         S: Into<String>,
-        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
     >(
         &mut self,
         path: S,
@@ -692,7 +795,7 @@ impl Router {
     /// ```
     pub fn head<
         S: Into<String>,
-        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
     >(
         &mut self,
         path: S,
@@ -724,7 +827,7 @@ impl Router {
     /// ```
     pub fn options<
         S: Into<String>,
-        H: Fn(&Request, &State, &IndexMap<String, String>) -> Response + Send + Sync + 'static,
+        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
     >(
         &mut self,
         path: S,
@@ -774,11 +877,11 @@ impl Router {
         for (method, routes) in builder.inner {
             // Loop through new routes
             for route in routes {
-                // Concat paths
-                let npath = format!("{}{}", path, route.path);
+                // Concatenate paths
+                let n_path = format!("{}{}", path, route.path);
 
                 // Transform the path in to ids and regex
-                let reader = self.read(&npath);
+                let reader = self.read(&n_path);
 
                 self.inner
                     .entry(method.clone())
@@ -786,19 +889,19 @@ impl Router {
                     .push(Route {
                         handler: route.handler,
                         ids: reader.0,
-                        path: npath,
+                        path: n_path,
                         pattern: reader.1,
                     });
             }
         }
     }
 
-    /// When a request is recived this is called to find a handler.
+    /// When a request is received this is called to find a handler.
     fn recognize(
         &self,
         method: &Method,
         path: &str,
-    ) -> Result<(&Handler, IndexMap<String, String>), StatusCode> {
+    ) -> Result<(&Handler, Capture), StatusCode> {
         // Get method
         let routes = self.inner.get(method).ok_or(StatusCode::NOT_FOUND)?;
 
@@ -816,27 +919,27 @@ impl Router {
         Err(StatusCode::NOT_FOUND)
     }
 
-    /// Takes each capture and transfroms it into a map of ids and captures.
-    fn captures(&self, route: &Route, re: &Regex, path: &str) -> Option<IndexMap<String, String>> {
-        // Get captures
+    /// Takes each capture and transforms it into a map of ids and captures.
+    fn captures(&self, route: &Route, re: &Regex, path: &str) -> Option<Capture> {
+        // Get captures.
         re.captures(path).map(|caps| {
-            let mut res: IndexMap<String, String> = IndexMap::new();
+            let mut captures = Capture::new();
 
             // Loop through each capture
             for (i, _) in caps.iter().enumerate() {
-                // We dont want the frist whole capture
+                // We dont want the first whole capture.
                 if i != 0 {
-                    // Insert the capture to its id
-                    let _ = res.insert(
-                        // An id exists so the unwrap is safe
-                        route.ids.get(i - 1).unwrap().to_string(),
-                        // The capture exists so the unwrap is safe
-                        caps.get(i).unwrap().as_str().to_string(),
+                    // Insert the capture to its id.
+                    let _ = captures.set(
+                        // An id exists so the unwrap is safe.
+                        route.ids.get(i - 1).unwrap().as_str(),
+                        // The capture exists so the unwrap is safe.
+                        caps.get(i).unwrap().as_str(),
                     );
                 }
             }
 
-            res
+            captures
         })
     }
 
@@ -1325,7 +1428,7 @@ impl<T: Serialize + Send + Sync> JsonBuilder<T> {
     }
 
     fn get_body(&self) -> String {
-        serde_json::to_string(&self.wrapper).expect("Can not transform strcut into json")
+        serde_json::to_string(&self.wrapper).expect("Can not transform struct into json")
     }
 }
 

@@ -32,7 +32,6 @@ extern crate http;
 extern crate hyper;
 extern crate indexmap;
 extern crate regex;
-extern crate smallvec;
 
 #[cfg(feature = "json")]
 extern crate serde;
@@ -58,7 +57,6 @@ use hyper::service::{NewService, Service};
 use hyper::{rt, Body, Method, Server, StatusCode, Uri, Version};
 use indexmap::IndexMap;
 use regex::Regex;
-use smallvec::SmallVec;
 
 #[cfg(feature = "json")]
 use serde::Serialize;
@@ -290,7 +288,6 @@ pub trait Middle {
 /// Direkuta::new()
 ///     .middle(Logger::new());
 /// ```
-#[derive(Clone, Copy, Debug)]
 pub struct Logger {}
 
 impl Logger {
@@ -453,7 +450,7 @@ impl Capture {
     ///
     /// ```rust
     /// # use direkuta::prelude::*;
-    /// let capture = Capture::new();
+    /// let mut capture = Capture::new();
     ///
     /// capture.set("message", "Hello World!");
     /// ```
@@ -472,7 +469,7 @@ impl Capture {
     ///
     /// ```rust
     /// # use direkuta::prelude::*;
-    /// let capture = Capture::new();
+    /// let mut capture = Capture::new();
     ///
     /// capture.set("message", "Hello World!");
     ///
@@ -497,7 +494,7 @@ impl Capture {
     ///
     /// ```rust
     /// # use direkuta::prelude::*;
-    /// let capture = Capture::new();
+    /// let mut capture = Capture::new();
     ///
     /// capture.set("message", "Hello World!");
     ///
@@ -529,7 +526,7 @@ impl Default for Capture {
 /// This is not to be used directly, it is only used for [Direkuta.route](Direkuta::route).
 struct Route {
     handler: Box<Handler>,
-    ids: SmallVec<[String; 64]>,
+    ids: Vec<String>,
     path: String,
     pattern: Regex,
 }
@@ -549,7 +546,7 @@ struct Route {
 /// }
 /// ```
 pub struct Router {
-    inner: IndexMap<Method, SmallVec<[Route; 128]>>,
+    inner: IndexMap<Method, Vec<Route>>,
 }
 
 impl Router {
@@ -590,7 +587,7 @@ impl Router {
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.route(Method::GET, "/<name:(.*)>", |_, _, c| {
-    ///             Response::new().with_body(c.get("name").unwrap().as_str())
+    ///             Response::new().with_body(c.get("name"))
     ///         });
     ///     });
     /// ```
@@ -616,7 +613,7 @@ impl Router {
 
         self.inner
             .entry(method)
-            .or_insert(SmallVec::new())
+            .or_insert(Vec::new())
             .push(Route {
                 handler: Box::new(handler),
                 ids: reader.0,
@@ -655,7 +652,7 @@ impl Router {
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.route(Method::GET, "/<name:(.*)>", |_, _, c| {
-    ///             Response::new().with_body(c.get("name").unwrap().as_str())
+    ///             Response::new().with_body(c.get("name"))
     ///         });
     ///     });
     /// ```
@@ -885,7 +882,7 @@ impl Router {
 
                 self.inner
                     .entry(method.clone())
-                    .or_insert(SmallVec::new())
+                    .or_insert(Vec::new())
                     .push(Route {
                         handler: route.handler,
                         ids: reader.0,
@@ -944,8 +941,8 @@ impl Router {
     }
 
     /// Parse each path into a vector of ids and a regex pattern
-    fn read(&self, path: &str) -> (SmallVec<[String; 64]>, Regex) {
-        let mut ids: SmallVec<[String; 64]> = SmallVec::new();
+    fn read(&self, path: &str) -> (Vec<String>, Regex) {
+        let mut ids: Vec<String> = Vec::new();
         let mut pattern = String::new();
 
         let mut mode = Mode::Look;
@@ -967,7 +964,7 @@ impl Router {
             }
         }
 
-        (ids, Regex::new(&self.normalize(&pattern)).unwrap())
+        (ids, Regex::new(&self.normalize(&pattern)).expect("Not a valid regex pattern"))
     }
 
     /// Normalizes the regex paths.
@@ -996,7 +993,6 @@ impl Default for Router {
 }
 
 /// A wrapper around [Hyper Response](hyper::Response).
-#[derive(Debug)]
 pub struct Response {
     body: Body,
     parts: response::Parts,
@@ -1493,7 +1489,6 @@ impl<T: Serialize + Send + Sync> Default for Wrapper<T> {
 }
 
 /// A wrapper around [Hyper Request](hyper::Request).
-#[derive(Debug)]
 pub struct Request {
     body: Body,
     parts: request::Parts,
@@ -1580,7 +1575,7 @@ macro_rules! headermap {
 
 /// Imports just the required parts of [Direkuta](Direkuta).
 pub mod prelude {
-    pub use super::{Direkuta, Logger, Middle, Request, Response, State};
+    pub use super::{Capture, Direkuta, Logger, Middle, Request, Response, State};
 
     /// Imports the required parts from [Tera](Tera).
     ///

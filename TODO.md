@@ -6,7 +6,7 @@
   - ~~Mostly for authorization and the like.~~
 - [ ] Tests.
 - [x] ~~Change router to support a `path` function.~~
-- [x] ~~Impliment middleware calling.~~
+- [x] ~~Implement middleware calling.~~
 - [x] Route parameter ids instead of tuple positions.
 - [ ] Static files with path sanitization.
 - [ ] Error handling
@@ -21,7 +21,7 @@
       - [ ] JPEG
       - [ ] PNG
     - [ ] Sound
-      - [ ] Flac
+      - [ ] FLAC
       - [ ] MP3
       - [ ] Ogg
     - [ ] Video
@@ -29,6 +29,8 @@
       - [ ] WebM
   - [x] JSON
   - [ ] Tera
+- [ ] Large File Streaming
+  - futures-fs and Hyper `Body::pair`?
 
 ## Future
 

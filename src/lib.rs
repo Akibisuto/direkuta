@@ -1534,7 +1534,7 @@ impl<T: Serialize + Send + Sync> Wrapper<T> {
     }
 
     /// Set the response status string.
-    fn set_status<S: Into<String>>(&mut self, status: s) {
+    fn set_status<S: Into<String>>(&mut self, status: S) {
         self.status = status.into();
     }
 
@@ -1551,7 +1551,7 @@ impl<T: Serialize + Send + Sync> Default for Wrapper<T> {
             code: 200,
             messages: Vec::new(),
             result: None,
-            status: "OK",
+            status: String::from("OK"),
         }
     }
 }

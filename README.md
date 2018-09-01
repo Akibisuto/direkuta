@@ -14,7 +14,7 @@ use direkuta::prelude::*;
 fn main() {
     Direkuta::new()
         .route(|r| {
-            r.get("/", |_, _, _| Response::new().with_body("Hello World!"));
+            r.get("/", |_, _, _| Response::new().with_body("Hello World!").build());
         }).run("0.0.0.0:3000");
 }
 ```
@@ -49,16 +49,16 @@ $ wrk -t10 -c400 -d30s http://0.0.0.0:3000/ --latency
 Running 30s test @ http://0.0.0.0:3000/
   10 threads and 400 connections
   Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     8.18ms    4.71ms  29.13ms   63.69%
-    Req/Sec     2.55k   313.33     6.62k    74.55%
+    Latency     8.13ms    4.67ms  29.20ms   63.54%
+    Req/Sec     2.57k   312.47     7.09k    74.02%
   Latency Distribution
-     50%    7.63ms
-     75%   11.74ms
-     90%   14.81ms
-     99%   19.25ms
-  759382 requests in 30.09s, 63.73MB read
-Requests/sec:  25233.36
-Transfer/sec:      2.12MB
+     50%    7.58ms
+     75%   11.66ms
+     90%   14.72ms
+     99%   19.08ms
+  765359 requests in 30.09s, 64.23MB read
+Requests/sec:  25436.42
+Transfer/sec:      2.13MB
 ```
 
 ## Middleware
@@ -86,7 +86,7 @@ fn main() {
                 Response::new().with_body(s
                     .get::<Tera>()
                     .render(Context::new(), "index.html")
-                    .unwrap())
+                    .unwrap()).build()
             });
         }).run("0.0.0.0:3000");
 }
@@ -116,7 +116,7 @@ fn main() {
                     j.body(Example {
                         hello: String::from("world"),
                     });
-                })
+                }).build()
             });
         }).run("0.0.0.0:3000");
 }
@@ -150,7 +150,7 @@ fn main() {
     Direkuta::new()
         .route(|r| {
             r.get("/<name:(.+)>", |_, _, c| {
-                Response::new().with_body(c.get("name"))
+                Response::new().with_body(c.get("name")).build()
             });
         }).run("0.0.0.0:3000");
 }

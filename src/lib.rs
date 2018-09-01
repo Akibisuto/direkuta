@@ -105,6 +105,7 @@ extern crate http;
 extern crate hyper;
 extern crate indexmap;
 extern crate regex;
+extern crate tokio_fs;
 
 #[cfg(feature = "json")]
 extern crate serde;
@@ -139,6 +140,7 @@ use tera::Tera;
 
 /// The Direkuta web server itself.
 pub struct Direkuta {
+    config: Arc<Config>,
     /// Store state as its own type.
     state: Arc<State>,
     /// Stores middleware, to be later used in Service::call.
@@ -160,6 +162,16 @@ impl Direkuta {
         Direkuta::default()
     }
 
+    /// Set the configuration of the server.
+    pub fn config<R: Fn(&mut Config) + Send + Sync + 'static>(mut self, c: R) -> Self {
+        let mut config = Config::new();
+
+        c(&mut config);
+        self.config = Arc::new(config);
+
+        self
+    }
+
     /// Insert a state into server.
     ///
     /// # Examples
@@ -174,6 +186,7 @@ impl Direkuta {
     ///
     /// Do not use this from anywhere else but the main constructor.
     /// Using this from any else will cause a thread panic.
+    #[inline]
     pub fn state<T: Any + Send + Sync + 'static>(mut self, state: T) -> Self {
         Arc::get_mut(&mut self.state)
             .expect("Cannot get_mut on state")
@@ -197,6 +210,7 @@ impl Direkuta {
     ///
     /// Do not use this from anywhere else but the main constructor.
     /// Using this from any else will cause a thread panic.
+    #[inline]
     pub fn middle<T: Middle + Send + Sync + 'static>(mut self, middle: T) -> Self {
         let _ = Arc::get_mut(&mut self.middle)
             .expect("Cannot get_mut on middle")
@@ -215,6 +229,7 @@ impl Direkuta {
     ///         // handlers here
     ///     });
     /// ```
+    #[inline]
     pub fn route<R: Fn(&mut Router) + Send + Sync + 'static>(mut self, route: R) -> Self {
         let mut route_builder = Router::new();
 
@@ -238,6 +253,7 @@ impl Direkuta {
     /// # Errors
     ///
     /// If any errors come from the server they will be printed to the console.
+    #[inline]
     pub fn run(self, addr: &str) {
         let address = addr.parse().expect("Address not a valid socket address");
         let server = Server::bind(&address)
@@ -265,6 +281,7 @@ impl Default for Direkuta {
         });
 
         Self {
+            config: Arc::new(Config::new()),
             state: Arc::new(state),
             middle: Arc::new(IndexMap::new()),
             routes: Arc::new(Router::default()),
@@ -282,6 +299,7 @@ impl NewService for Direkuta {
 
     fn new_service(&self) -> Self::Future {
         Box::new(future::ok(Self {
+            config: self.config.clone(),
             state: self.state.clone(),
             middle: self.middle.clone(),
             routes: self.routes.clone(),
@@ -293,32 +311,62 @@ impl Service for Direkuta {
     type ReqBody = Body;
     type ResBody = Body;
     type Error = hyper::Error;
-    type Future = Box<Future<Item = response::Response<Self::ReqBody>, Error = Self::Error> + Send>;
+    type Future = Box<Future<Item = response::Response<Self::ResBody>, Error = Self::Error> + Send>;
 
     fn call(&mut self, req: request::Request<Self::ReqBody>) -> Self::Future {
-        let method = req.method().clone();
         let path = req.uri().path().to_owned();
         let (parts, body) = req.into_parts();
         let mut req = Request::new(body, parts);
 
         for (_, before) in self.middle.iter() {
-            before.before(&mut req);
+            before.run(&mut req);
         }
 
-        let mut res: Response = match self.routes.recognize(&method, &path) {
-            Ok((handler, cap)) => handler(&req, &self.state.clone(), &cap),
+        let mut res: Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> = match self.routes.recognize(&req.method(), &path) {
+            Ok((handler, cap)) => handler(req, self.state.clone(), cap),
             Err(code) => {
-                let mut res = Response::new();
-                res.set_status(code.as_u16());
-                res
+                Response::new()
+                    .with_status(code.as_u16())
+                    .build()
             }
         };
 
-        for (_, after) in self.middle.iter() {
-            after.after(&mut req, &mut res);
-        }
+        res
+    }
+}
 
-        Box::new(future::ok(res.into_hyper()))
+/// Internal configuration for the server.
+///
+/// Allows finer control of preset variables like template and static path.
+pub struct Config {
+    template_path: String,
+    static_path: String,
+}
+
+impl Config {
+    fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the path for templates, defaults to "templates".
+    #[inline]
+    pub fn template_path<S: Into<String>>(&mut self, path: S) {
+        self.template_path = path.into();
+    }
+
+    /// Set the path for static files, defaults to "static".
+    #[inline]
+    pub fn static_path<S: Into<String>>(&mut self, path: S) {
+        self.static_path = path.into();
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            template_path: "templates".to_string(),
+            static_path: "static".to_string(),
+        }
     }
 }
 
@@ -337,20 +385,14 @@ impl Service for Direkuta {
 /// }
 ///
 /// impl Middle for Logger {
-///     fn before(&self, req: &mut Request) {
+///     fn run(&self, req: &mut Request) {
 ///         println!("[{}] `{}`", req.method(), req.uri());
-///     }
-///
-///     fn after(&self, req: &mut Request, res: &mut Response) {
-///         println!("[{}] `{}`", res.status(), req.uri());
 ///     }
 /// }
 /// ```
 pub trait Middle {
     /// Called before a request is sent through Router.
-    fn before(&self, &mut Request);
-    /// Called after a request is sent through Router.
-    fn after(&self, &mut Request, &mut Response);
+    fn run(&self, &mut Request);
 }
 
 /// A simple logger middleware.
@@ -372,12 +414,9 @@ impl Logger {
 }
 
 impl Middle for Logger {
-    fn before(&self, req: &mut Request) {
+    #[inline]
+    fn run(&self, req: &mut Request) {
         println!("[{}] `{}`", req.method(), req.uri());
-    }
-
-    fn after(&self, req: &mut Request, res: &mut Response) {
-        println!("[{}] `{}`", res.status(), req.uri());
     }
 }
 
@@ -477,14 +516,12 @@ impl State {
 }
 
 impl Default for State {
-    fn default() -> State {
-        State {
+    fn default() -> Self {
+        Self {
             inner: IndexMap::new(),
         }
     }
 }
-
-type Handler = Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static;
 
 /// The current mode of the router path parser.
 enum Mode {
@@ -528,6 +565,7 @@ impl Capture {
     ///
     /// capture.set("message", "Hello World!");
     /// ```
+    #[inline]
     pub fn set<K: Into<String>, V: Into<String>>(&mut self, key: K, value: V) {
         let _ = self.inner.insert(key.into(), value.into());
     }
@@ -591,6 +629,8 @@ impl Default for Capture {
         }
     }
 }
+
+type Handler = Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static;
 
 /// Internal route, stores the handler and path details.
 ///
@@ -670,7 +710,7 @@ impl Router {
     /// ```
     pub fn route<
         S: Into<String>,
-        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
     >(
         &mut self,
         method: Method,
@@ -732,7 +772,7 @@ impl Router {
     /// ```
     pub fn get<
         S: Into<String>,
-        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
     >(
         &mut self,
         path: S,
@@ -764,7 +804,7 @@ impl Router {
     /// ```
     pub fn post<
         S: Into<String>,
-        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
     >(
         &mut self,
         path: S,
@@ -796,7 +836,7 @@ impl Router {
     /// ```
     pub fn put<
         S: Into<String>,
-        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
     >(
         &mut self,
         path: S,
@@ -828,7 +868,7 @@ impl Router {
     /// ```
     pub fn delete<
         S: Into<String>,
-        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
     >(
         &mut self,
         path: S,
@@ -860,7 +900,7 @@ impl Router {
     /// ```
     pub fn head<
         S: Into<String>,
-        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
     >(
         &mut self,
         path: S,
@@ -892,7 +932,7 @@ impl Router {
     /// ```
     pub fn options<
         S: Into<String>,
-        H: Fn(&Request, &State, &Capture) -> Response + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
     >(
         &mut self,
         path: S,
@@ -959,6 +999,7 @@ impl Router {
     }
 
     /// When a request is received this is called to find a handler.
+    #[inline]
     fn recognize(&self, method: &Method, path: &str) -> Result<(&Handler, Capture), StatusCode> {
         // Get method
         let routes = self.inner.get(method).ok_or(StatusCode::NOT_FOUND)?;
@@ -978,6 +1019,7 @@ impl Router {
     }
 
     /// Takes each capture and transforms it into a map of ids and captures.
+    #[inline]
     fn captures(&self, route: &Route, re: &Regex, path: &str) -> Option<Capture> {
         // Get captures.
         re.captures(path).map(|caps| {
@@ -988,9 +1030,9 @@ impl Router {
                 // We dont want the first whole capture.
                 if i != 0 {
                     // Insert the capture to its id.
-                    let _ = captures.set(
+                    captures.set(
                         // An id exists so the unwrap is safe.
-                        route.ids.get(i - 1).unwrap().as_str(),
+                        route.ids[i - 1].as_str(),
                         // The capture exists so the unwrap is safe.
                         caps.get(i).unwrap().as_str(),
                     );
@@ -1002,6 +1044,7 @@ impl Router {
     }
 
     /// Parse each path into a vector of ids and a regex pattern
+    #[inline]
     fn read(&self, path: &str) -> (Vec<String>, Regex) {
         let mut ids: Vec<String> = Vec::new();
         let mut pattern = String::new();
@@ -1041,6 +1084,7 @@ impl Router {
     ///
     /// Removes the beginning `^` and ending `$` and `/`, if the exist.
     /// Then adds them even if they weren't there.
+    #[inline]
     fn normalize(&self, pattern: &str) -> Cow<str> {
         let pattern = pattern
             .trim()
@@ -1349,8 +1393,13 @@ impl Response {
     }
 
     /// Transform the Response into a Hyper Response.
-    fn into_hyper(self) -> hyper::Response<Body> {
+    pub fn into_hyper(self) -> hyper::Response<Body> {
         hyper::Response::from_parts(self.parts, self.body)
+    }
+
+    /// Wrapper around 'into_hyper' to change it into a future response.
+    pub fn build(self) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> {
+        Box::new(future::ok(self.into_hyper()))
     }
 }
 
@@ -1564,7 +1613,7 @@ pub struct Request {
 
 impl Request {
     /// Constructs a new Request.
-    pub fn new(body: Body, parts: request::Parts) -> Self {
+    fn new(body: Body, parts: request::Parts) -> Self {
         Self { body, parts }
     }
 
@@ -1596,6 +1645,11 @@ impl Request {
     /// Return Request body.
     pub fn body(&self) -> &Body {
         &self.body
+    }
+
+    /// Return Request body.
+    pub fn into_body(self) -> Body {
+        self.body
     }
 }
 
@@ -1643,6 +1697,13 @@ macro_rules! headermap {
 /// Imports just the required parts of Direkuta.
 pub mod prelude {
     pub use super::{Capture, Direkuta, Logger, Middle, Request, Response, State};
+
+    /// Imports all builders used in Direkuta.
+    ///
+    /// Useful for turing the closures into stand-alone functions.
+    pub mod builder {
+        pub use super::super::{CssBuilder, JsBuilder, Router};
+    }
 
     /// Imports the required parts from Tera.
     ///

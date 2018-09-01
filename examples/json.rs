@@ -17,7 +17,7 @@ fn main() {
                     j.body(Example {
                         hello: String::from("world"),
                     });
-                })
+                }).build()
             });
         }).run("0.0.0.0:3000");
 }

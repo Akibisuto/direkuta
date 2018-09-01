@@ -13,11 +13,12 @@ fn main() {
     Direkuta::new()
         .route(|r| {
             r.get("/", |_, _, _| {
-                Response::new().with_json(|j| {
-                    j.body(Example {
-                        hello: String::from("world"),
-                    });
-                }).build()
+                Response::new()
+                    .with_json(|j| {
+                        j.body(Example {
+                            hello: String::from("world"),
+                        });
+                    }).build()
             });
         }).run("0.0.0.0:3000");
 }

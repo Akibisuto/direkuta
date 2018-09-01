@@ -322,13 +322,11 @@ impl Service for Direkuta {
             before.run(&mut req);
         }
 
-        let mut res: Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> = match self.routes.recognize(&req.method(), &path) {
+        let res: Box<
+            Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static,
+        > = match self.routes.recognize(&req.method(), &path) {
             Ok((handler, cap)) => handler(req, self.state.clone(), cap),
-            Err(code) => {
-                Response::new()
-                    .with_status(code.as_u16())
-                    .build()
-            }
+            Err(code) => Response::new().with_status(code.as_u16()).build(),
         };
 
         res
@@ -630,7 +628,12 @@ impl Default for Capture {
     }
 }
 
-type Handler = Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static;
+type Handler =
+    Fn(Request, Arc<State>, Capture)
+            -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+        + Send
+        + Sync
+        + 'static;
 
 /// Internal route, stores the handler and path details.
 ///
@@ -710,7 +713,11 @@ impl Router {
     /// ```
     pub fn route<
         S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture)
+                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+            + Send
+            + Sync
+            + 'static,
     >(
         &mut self,
         method: Method,
@@ -772,7 +779,11 @@ impl Router {
     /// ```
     pub fn get<
         S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture)
+                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+            + Send
+            + Sync
+            + 'static,
     >(
         &mut self,
         path: S,
@@ -804,7 +815,11 @@ impl Router {
     /// ```
     pub fn post<
         S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture)
+                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+            + Send
+            + Sync
+            + 'static,
     >(
         &mut self,
         path: S,
@@ -836,7 +851,11 @@ impl Router {
     /// ```
     pub fn put<
         S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture)
+                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+            + Send
+            + Sync
+            + 'static,
     >(
         &mut self,
         path: S,
@@ -868,7 +887,11 @@ impl Router {
     /// ```
     pub fn delete<
         S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture)
+                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+            + Send
+            + Sync
+            + 'static,
     >(
         &mut self,
         path: S,
@@ -900,7 +923,11 @@ impl Router {
     /// ```
     pub fn head<
         S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture)
+                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+            + Send
+            + Sync
+            + 'static,
     >(
         &mut self,
         path: S,
@@ -932,7 +959,11 @@ impl Router {
     /// ```
     pub fn options<
         S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> + Send + Sync + 'static,
+        H: Fn(Request, Arc<State>, Capture)
+                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+            + Send
+            + Sync
+            + 'static,
     >(
         &mut self,
         path: S,
@@ -1398,7 +1429,9 @@ impl Response {
     }
 
     /// Wrapper around 'into_hyper' to change it into a future response.
-    pub fn build(self) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> {
+    pub fn build(
+        self,
+    ) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> {
         Box::new(future::ok(self.into_hyper()))
     }
 }

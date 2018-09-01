@@ -11,7 +11,8 @@ fn main() {
                 Response::new()
                     .with_headers(headermap! {
                         header::CONTENT_TYPE => "text/plain",
-                    }).with_body("Hello World!").build()
+                    }).with_body("Hello World!")
+                    .build()
             });
         }).run("0.0.0.0:3000");
 }

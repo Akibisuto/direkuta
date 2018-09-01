@@ -292,8 +292,8 @@ impl Default for Direkuta {
 impl NewService for Direkuta {
     type ReqBody = Body;
     type ResBody = Body;
-    type Error = hyper::Error;
-    type InitError = hyper::Error;
+    type Error = DireError;
+    type InitError = DireError;
     type Service = Direkuta;
     type Future = Box<Future<Item = Self::Service, Error = Self::InitError> + Send>;
 
@@ -310,7 +310,7 @@ impl NewService for Direkuta {
 impl Service for Direkuta {
     type ReqBody = Body;
     type ResBody = Body;
-    type Error = hyper::Error;
+    type Error = DireError;
     type Future = Box<Future<Item = response::Response<Self::ResBody>, Error = Self::Error> + Send>;
 
     fn call(&mut self, req: request::Request<Self::ReqBody>) -> Self::Future {
@@ -322,14 +322,10 @@ impl Service for Direkuta {
             before.run(&mut req);
         }
 
-        let res: Box<
-            Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static,
-        > = match self.routes.recognize(&req.method(), &path) {
+        match self.routes.recognize(&req.method(), &path) {
             Ok((handler, cap)) => handler(req, self.state.clone(), cap),
             Err(code) => Response::new().with_status(code.as_u16()).build(),
-        };
-
-        res
+        }
     }
 }
 
@@ -365,6 +361,43 @@ impl Default for Config {
             template_path: "templates".to_string(),
             static_path: "static".to_string(),
         }
+    }
+}
+
+/// Wrapper around common and library error types.
+///
+/// You should not have to create your own error type.
+#[derive(Debug)]
+pub enum DireError {
+    /// Any error that originates from Hyper.
+    Hyper(hyper::Error),
+}
+
+impl std::fmt::Display for DireError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match *self {
+            DireError::Hyper(ref e) => write!(f, "(DireError [Hyper] {})", e),
+        }
+    }
+}
+
+impl std::error::Error for DireError {
+    fn description(&self) -> &str {
+        match *self {
+            DireError::Hyper(ref e) => e.description(),
+        }
+    }
+
+    fn cause(&self) -> Option<&std::error::Error> {
+        match *self {
+            DireError::Hyper(ref e) => e.cause(),
+        }
+    }
+}
+
+impl From<hyper::Error> for DireError {
+    fn from(err: hyper::Error) -> DireError {
+        DireError::Hyper(err)
     }
 }
 
@@ -630,7 +663,7 @@ impl Default for Capture {
 
 type Handler =
     Fn(Request, Arc<State>, Capture)
-            -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+            -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
         + Send
         + Sync
         + 'static;
@@ -714,7 +747,7 @@ impl Router {
     pub fn route<
         S: Into<String>,
         H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
@@ -780,7 +813,7 @@ impl Router {
     pub fn get<
         S: Into<String>,
         H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
@@ -816,7 +849,7 @@ impl Router {
     pub fn post<
         S: Into<String>,
         H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
@@ -852,7 +885,7 @@ impl Router {
     pub fn put<
         S: Into<String>,
         H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
@@ -888,7 +921,7 @@ impl Router {
     pub fn delete<
         S: Into<String>,
         H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
@@ -924,7 +957,7 @@ impl Router {
     pub fn head<
         S: Into<String>,
         H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
@@ -960,7 +993,7 @@ impl Router {
     pub fn options<
         S: Into<String>,
         H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static>
+                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
@@ -1431,7 +1464,7 @@ impl Response {
     /// Wrapper around 'into_hyper' to change it into a future response.
     pub fn build(
         self,
-    ) -> Box<Future<Item = response::Response<Body>, Error = hyper::Error> + Send + 'static> {
+    ) -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static> {
         Box::new(future::ok(self.into_hyper()))
     }
 }

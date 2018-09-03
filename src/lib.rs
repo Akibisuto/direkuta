@@ -14,7 +14,7 @@
 //! Direkuta::new()
 //!     .route(|r| {
 //!         r.get("/", |_, _, _| {
-//!             Response::new().with_body("Hello World!")
+//!             Response::new().with_body("Hello World!").build()
 //!         });
 //!     })
 //!     .run("0.0.0.0:3000");
@@ -35,7 +35,7 @@
 //!                 Response::new().with_body(s
 //!                     .get::<Tera>()
 //!                     .render(Context::new(), "index.html")
-//!                     .unwrap())
+//!                     .unwrap()).build()
 //!             });
 //!         }).run("0.0.0.0:3000");
 //! }
@@ -63,7 +63,7 @@
 //!                     j.body(Example {
 //!                         hello: String::from("world"),
 //!                     });
-//!                 })
+//!                 }).build()
 //!             });
 //!         }).run("0.0.0.0:3000");
 //! }
@@ -80,7 +80,7 @@
 //!     Direkuta::new()
 //!         .route(|r| {
 //!             r.get("/<name:(.+)>", |_, _, c| {
-//!                 Response::new().with_body(c.get("name"))
+//!                 Response::new().with_body(c.get("name")).build()
 //!             });
 //!         }).run("0.0.0.0:3000");
 //! }
@@ -163,6 +163,17 @@ impl Direkuta {
     }
 
     /// Set the configuration of the server.
+    ///
+    /// This is an alternative to `Direkuta::new()` and allows you to set custom paths.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::prelude::*;
+    /// Direkuta::config(|c| {
+    ///     c.template_path("html/templates");
+    /// });
+    /// ```
     pub fn config<R: Fn(&mut Config) + Send + Sync + 'static>(c: R) -> Self {
         let mut config = Config::new();
 

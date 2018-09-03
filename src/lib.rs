@@ -732,7 +732,7 @@ impl Router {
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.route(Method::GET, "/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
+    ///             Response::new().with_body("Hello World!").build()
     ///         });
     ///     });
     /// ```
@@ -751,7 +751,7 @@ impl Router {
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.route(Method::GET, "/<name:(.*)>", |_, _, c| {
-    ///             Response::new().with_body(c.get("name"))
+    ///             Response::new().with_body(c.get("name")).build()
     ///         });
     ///     });
     /// ```
@@ -798,7 +798,7 @@ impl Router {
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.get("/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
+    ///             Response::new().with_body("Hello World!").build()
     ///         });
     ///     });
     /// ```
@@ -817,7 +817,7 @@ impl Router {
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.route(Method::GET, "/<name:(.*)>", |_, _, c| {
-    ///             Response::new().with_body(c.get("name"))
+    ///             Response::new().with_body(c.get("name")).build()
     ///         });
     ///     });
     /// ```
@@ -853,7 +853,7 @@ impl Router {
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.post("/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
+    ///             Response::new().with_body("Hello World!").build()
     ///         });
     ///     });
     /// ```
@@ -889,7 +889,7 @@ impl Router {
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.put("/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
+    ///             Response::new().with_body("Hello World!").build()
     ///         });
     ///     });
     /// ```
@@ -925,7 +925,7 @@ impl Router {
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.delete("/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
+    ///             Response::new().with_body("Hello World!").build()
     ///         });
     ///     });
     /// ```
@@ -961,7 +961,7 @@ impl Router {
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.head("/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
+    ///             Response::new().with_body("Hello World!").build()
     ///         });
     ///     });
     /// ```
@@ -997,7 +997,7 @@ impl Router {
     /// Direkuta::new()
     ///     .route(|r| {
     ///         r.options("/", |_, _, _| {
-    ///             Response::new().with_body("Hello World!")
+    ///             Response::new().with_body("Hello World!").build()
     ///         });
     ///     });
     /// ```
@@ -1034,7 +1034,7 @@ impl Router {
     ///     .route(|r| {
     ///         r.path("/parent", |r| {
     ///             r.get("/child", |_, _, _| {
-    ///                 Response::new().with_body("Hello World!")
+    ///                 Response::new().with_body("Hello World!").build()
     ///             });
     ///         });
     ///     });

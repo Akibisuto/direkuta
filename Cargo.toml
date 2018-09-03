@@ -63,6 +63,7 @@ required-features = ["json"]
 default = []
 html = ["tera"]
 json = ["serde", "serde_derive", "serde_json"]
+runtime = []
 
 [package.metadata.docs.rs]
 features = ["html", "json"]

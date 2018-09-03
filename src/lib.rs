@@ -371,12 +371,15 @@ impl Default for Config {
 pub enum DireError {
     /// Any error that originates from Hyper.
     Hyper(hyper::Error),
+    /// General error, for use when no error type exists.
+    Other(String),
 }
 
 impl std::fmt::Display for DireError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match *self {
             DireError::Hyper(ref e) => write!(f, "(DireError [Hyper] {})", e),
+            DireError::Other(ref e) => write!(f, "(DireError [Other] {})", e),
         }
     }
 }
@@ -385,12 +388,14 @@ impl std::error::Error for DireError {
     fn description(&self) -> &str {
         match *self {
             DireError::Hyper(ref e) => e.description(),
+            DireError::Other(ref e) => e,
         }
     }
 
     fn cause(&self) -> Option<&std::error::Error> {
         match *self {
             DireError::Hyper(ref e) => e.cause(),
+            _ => None,
         }
     }
 }
@@ -398,6 +403,18 @@ impl std::error::Error for DireError {
 impl From<hyper::Error> for DireError {
     fn from(err: hyper::Error) -> DireError {
         DireError::Hyper(err)
+    }
+}
+
+impl From<&'static str> for DireError {
+    fn from(err: &str) -> DireError {
+        DireError::Other(err.to_string())
+    }
+}
+
+impl From<String> for DireError {
+    fn from(err: String) -> DireError {
+        DireError::Other(err)
     }
 }
 
@@ -447,7 +464,7 @@ impl Logger {
 impl Middle for Logger {
     #[inline]
     fn run(&self, req: &mut Request) {
-        println!("[{}] `{}`", req.method(), req.uri());
+        println!("[{:>6}] `{}`", req.method().as_ref(), req.uri());
     }
 }
 
@@ -1457,8 +1474,8 @@ impl Response {
     }
 
     /// Transform the Response into a Hyper Response.
-    pub fn into_hyper(self) -> hyper::Response<Body> {
-        hyper::Response::from_parts(self.parts, self.body)
+    pub fn into_hyper(self) -> response::Response<Body> {
+        response::Response::from_parts(self.parts, self.body)
     }
 
     /// Wrapper around 'into_hyper' to change it into a future response.
@@ -1753,7 +1770,7 @@ macro_rules! headermap {
             let _cap = headermap!(@count $($key),*);
             let mut _map = ::direkuta::prelude::hyper::HeaderMap::with_capacity(_cap);
             $(
-                let _ = _map.insert($key, ::direkuta::prelude::hyper::HeaderValue::from_static($value));
+                let _ = _map.insert($key, ::direkuta::prelude::hyper::HeaderValue::from_str($value).unwrap());
             )*
             _map
         }
@@ -1762,13 +1779,13 @@ macro_rules! headermap {
 
 /// Imports just the required parts of Direkuta.
 pub mod prelude {
-    pub use super::{Capture, Direkuta, Logger, Middle, Request, Response, State};
+    pub use super::{Capture, Direkuta, DireError, Logger, Middle, Request, Response, State};
 
     /// Imports all builders used in Direkuta.
     ///
     /// Useful for turing the closures into stand-alone functions.
     pub mod builder {
-        pub use super::super::{CssBuilder, JsBuilder, Router};
+        pub use super::super::{Config, CssBuilder, JsBuilder, JsonBuilder, Router};
     }
 
     /// Imports the required parts from Tera.
@@ -1786,5 +1803,21 @@ pub mod prelude {
     pub mod hyper {
         pub use hyper::header::{self, HeaderMap, HeaderValue};
         pub use hyper::Method;
+    }
+
+    /// Exports Futures' 'future', 'Future', and 'Stream'.
+    #[cfg(feature = "runtime")]
+    pub mod rt {
+        use http::response::Response;
+        use hyper::Body;
+
+        use super::super::DireError;
+
+        /// Wrapper around HTTP Response
+        pub type Res = Response<Body>;
+
+        /// Type alias for Router returns.
+        pub type FutureResponse = Box<Future<Item = Res, Error = DireError> + Send + 'static>;
+        pub use futures::{future, Future, Stream};
     }
 }

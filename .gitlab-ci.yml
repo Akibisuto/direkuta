@@ -20,7 +20,7 @@ variables:
 
 info:
   stage: info
-  cache: false
+  cache: {}
   script:
   - rustc --version
   - cargo --version

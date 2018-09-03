@@ -9,7 +9,7 @@
 - [x] ~~Implement middleware calling.~~
 - [x] Route parameter ids instead of tuple positions.
 - [ ] Static files with path sanitization.
-- [ ] Error handling
+- [X] ~~Error handling~~
 - [ ] Response builders
   - [ ] Files
     - [ ] Code

@@ -1754,7 +1754,7 @@ impl Request {
 ///             Response::new()
 ///                 .with_headers(headermap! {
 ///                     header::CONTENT_TYPE => "text/plain",
-///                 }).with_body("Hello World!")
+///                 }).with_body("Hello World!").build()
 ///         });
 ///     });
 /// # }
@@ -1779,7 +1779,7 @@ macro_rules! headermap {
 
 /// Imports just the required parts of Direkuta.
 pub mod prelude {
-    pub use super::{Capture, Direkuta, DireError, Logger, Middle, Request, Response, State};
+    pub use super::{Capture, DireError, Direkuta, Logger, Middle, Request, Response, State};
 
     /// Imports all builders used in Direkuta.
     ///

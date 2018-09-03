@@ -8,30 +8,11 @@ Each framework it titled along with the used commit hash.
 
 |                 | Requests/sec   | Transfer/sec   | Latency   |
 |-----------------|---------------:|---------------:|----------:|
-| **Direkuta**    | 25233.36       | 2.12MB         | 8.18ms    |
-| ***Hyper***     | *26540.04*     | *2.23MB*       | *7.77ms*  |
-| **Actix**       | 7162.27        | 0.88MB         | 55.59ms   |
+| **Hyper**       | 26540.04       | 2.23MB         | 7.77ms    |
+| **Direkuta**    | 25436.42       | 2.13MB         | 8.13ms    |
+| **Actix**       | 55151.73       | 6.78MB         | 3.71ms    |
 | **Gotham**      | 24155.22       | 4.45MB         | 8.63ms    |
 | **Shio**        | 35017.76       | 2.97MB         | 11.38ms   |
-
-## Direkuta (243526f2f0dae817350410dfbb785e093323fd04)
-
-```console
-$ wrk -t10 -c400 -d30s http://0.0.0.0:3000/ --latency
-Running 30s test @ http://0.0.0.0:3000/
-  10 threads and 400 connections
-  Thread Stats   Avg      Stdev     Max   +/- Stdev
-    Latency     8.13ms    4.67ms  29.20ms   63.54%
-    Req/Sec     2.57k   312.47     7.09k    74.02%
-  Latency Distribution
-     50%    7.58ms
-     75%   11.66ms
-     90%   14.72ms
-     99%   19.08ms
-  765359 requests in 30.09s, 64.23MB read
-Requests/sec:  25436.42
-Transfer/sec:      2.13MB
-```
 
 ## Hyper (1448e4067b10da6fe4584921314afc1f5f4e3c8d)
 
@@ -50,6 +31,25 @@ Running 30s test @ http://0.0.0.0:3000/
   798726 requests in 30.10s, 67.03MB read
 Requests/sec:  26540.04
 Transfer/sec:      2.23MB
+```
+
+## Direkuta (243526f2f0dae817350410dfbb785e093323fd04)
+
+```console
+$ wrk -t10 -c400 -d30s http://0.0.0.0:3000/ --latency
+Running 30s test @ http://0.0.0.0:3000/
+  10 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     8.13ms    4.67ms  29.20ms   63.54%
+    Req/Sec     2.57k   312.47     7.09k    74.02%
+  Latency Distribution
+     50%    7.58ms
+     75%   11.66ms
+     90%   14.72ms
+     99%   19.08ms
+  765359 requests in 30.09s, 64.23MB read
+Requests/sec:  25436.42
+Transfer/sec:      2.13MB
 ```
 
 ## Actix (a677dc8a92003405a8f2331e6126e1f685e5acaa)

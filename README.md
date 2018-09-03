@@ -63,6 +63,8 @@ Requests/sec:  25436.42
 Transfer/sec:      2.13MB
 ```
 
+See more comparisons in `BENCHMARK.md`.
+
 ## Middleware
 
 Direkuta supports middleware that implement the `Middle` trait. Direkuta comes with an example Logger middleware that can be used.
@@ -161,4 +163,41 @@ fn main() {
 
 The routing system also has paths which allow you to group other paths under a section of the url.
 
-Soon their will also be a group which allows you to group handlers under one path.
+```rust
+extern crate direkuta;
+
+use direkuta::prelude::*;
+
+fn main() {
+    Direkuta::new()
+        .route(|r| {
+            r.path("/<name:(.+)>", |r| {
+                r.get("/<age:(.+)>", |_, _, c| {
+                    Response::new().with_body(format!("Name: {}, Age: {}", c.get("name"), c.get("age"))).build()
+                });
+            });
+        }).run("0.0.0.0:3000");
+}
+```
+
+Path routers can also be used to have multiple response types under one url.
+
+```rust
+extern crate direkuta;
+
+use direkuta::prelude::*;
+
+fn main() {
+    Direkuta::new()
+        .route(|r| {
+            r.path("/<name:(.+)>", |r| {
+                r.get("", |_, _, c| {
+                    Response::new().with_body(c.get("name")).build()
+                });
+                r.post("", |_, _, c| {
+                    Response::new().with_body(c.get("name")).build()
+                });
+            });
+        }).run("0.0.0.0:3000");
+}
+```

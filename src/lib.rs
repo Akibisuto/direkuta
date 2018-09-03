@@ -163,13 +163,29 @@ impl Direkuta {
     }
 
     /// Set the configuration of the server.
-    pub fn config<R: Fn(&mut Config) + Send + Sync + 'static>(mut self, c: R) -> Self {
+    pub fn config<R: Fn(&mut Config) + Send + Sync + 'static>(c: R) -> Self {
         let mut config = Config::new();
 
         c(&mut config);
-        self.config = Arc::new(config);
 
-        self
+        #[allow(unused_mut)]
+        let mut state = State::new();
+
+        #[cfg(feature = "html")]
+        state.set(match Tera::parse(&format!("{}/**/*", config.template_path)) {
+            Ok(t) => t,
+            Err(e) => {
+                println!("Parsing error(s): {}", e);
+                ::std::process::exit(1);
+            }
+        });
+
+        Self {
+            config: Arc::new(config),
+            state: Arc::new(state),
+            middle: Arc::new(IndexMap::new()),
+            routes: Arc::new(Router::default()),
+        }
     }
 
     /// Insert a state into server.

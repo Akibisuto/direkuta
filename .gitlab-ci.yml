@@ -34,7 +34,7 @@ info:
 test:
   stage: test
   script:
-  - cargo test
+  - cargo test --all-features
 
 # panic:
 #   allow_failure: true

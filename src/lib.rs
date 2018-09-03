@@ -1801,7 +1801,9 @@ pub mod prelude {
     ///
     /// Useful for turing the closures into stand-alone functions.
     pub mod builder {
-        pub use super::super::{Config, CssBuilder, JsBuilder, JsonBuilder, Router};
+        pub use super::super::{Config, CssBuilder, JsBuilder, Router};
+        #[cfg(feature = "json")]
+        pub use super::super::JsonBuilder;
     }
 
     /// Imports the required parts from Tera.

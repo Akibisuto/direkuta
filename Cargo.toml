@@ -42,7 +42,7 @@ tera = { version = "0.11", optional = true }
 
 [dev-dependencies]
 tokio = "0.1"
-yukikaze = "0.2"
+yukikaze = "0.3"
 
 [[example]]
 name = "captures"

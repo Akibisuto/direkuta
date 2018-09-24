@@ -120,6 +120,7 @@ extern crate tera;
 
 use std::any::{Any, TypeId};
 use std::borrow::Cow;
+use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::sync::Arc;
@@ -414,7 +415,7 @@ impl std::fmt::Display for DireError {
     }
 }
 
-impl std::error::Error for DireError {
+impl Error for DireError {
     fn description(&self) -> &str {
         match *self {
             DireError::Hyper(ref e) => e.description(),
@@ -423,7 +424,7 @@ impl std::error::Error for DireError {
         }
     }
 
-    fn cause(&self) -> Option<&std::error::Error> {
+    fn cause(&self) -> Option<&Error> {
         match *self {
             DireError::Hyper(ref e) => e.cause(),
             _ => None,
@@ -471,7 +472,7 @@ impl From<String> for DireError {
 /// ```
 pub trait Middle {
     /// Called before a request is sent through Router.
-    fn run(&self, &mut Request);
+    fn run(&self, req: &mut Request);
 }
 
 /// A simple logger middleware.

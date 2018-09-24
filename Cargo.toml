@@ -20,6 +20,8 @@ include = [
   "src/**/*"
 ]
 
+edition = "2018"
+
 [badges]
 gitlab = { repository = "akibisuto/direkuta", branch = "master" }
 maintenance = { status = "experimental" }

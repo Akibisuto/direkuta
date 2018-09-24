@@ -400,6 +400,8 @@ pub enum DireError {
     Hyper(hyper::Error),
     /// General error, for use when no error type exists.
     Other(String),
+    /// No type found in State.
+    StateNotFound,
 }
 
 impl std::fmt::Display for DireError {
@@ -407,6 +409,7 @@ impl std::fmt::Display for DireError {
         match *self {
             DireError::Hyper(ref e) => write!(f, "(DireError [Hyper] {})", e),
             DireError::Other(ref e) => write!(f, "(DireError [Other] {})", e),
+            DireError::StateNotFound => write!(f, "(DireError [State] Key Not Found)"),
         }
     }
 }
@@ -416,6 +419,7 @@ impl std::error::Error for DireError {
         match *self {
             DireError::Hyper(ref e) => e.description(),
             DireError::Other(ref e) => e,
+            DireError::StateNotFound => "Key not found",
         }
     }
 
@@ -564,6 +568,36 @@ impl State {
             .and_then(|b| b.downcast_ref::<T>())
     }
 
+    /// Attempt to get a value based on type.
+    ///
+    /// Use this if you are not sure if the type exists and want an Result instead of Option.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::prelude::*;
+    /// let mut state = State::new();
+    ///
+    /// state.set(String::from("Hello World!"));
+    ///
+    /// match state.get_err::<String>() {
+    ///     Ok(s) => {
+    ///         println!("{}", s);
+    ///     },
+    ///     Err(e) => {
+    ///         println!("String not found in state");
+    ///     },
+    /// }
+    /// ```
+    pub fn get_err<T: Any + Send + Sync + 'static>(&self) -> Result<&T, DireError> {
+        match self.inner
+            .get(&TypeId::of::<T>())
+            .and_then(|b| b.downcast_ref::<T>()) {
+                Some(inner) => Ok(inner),
+                None => Err(DireError::StateNotFound)
+            }
+    }
+
     /// Get a value based on type.
     ///
     /// This is a wrapper around try_get.
@@ -666,8 +700,11 @@ impl Capture {
     ///     },
     /// }
     /// ```
-    pub fn try_get<S: Into<String>>(&self, key: S) -> Option<&String> {
-        self.inner.get(&key.into())
+    pub fn try_get<S: Into<String>>(&self, key: S) -> Option<&str> {
+        match self.inner.get(&key.into()) {
+            Some(s) => Some(s.as_str()),
+            None => None,
+        }
     }
 
     /// Get a value based on key.
@@ -687,12 +724,69 @@ impl Capture {
     ///
     /// # Panics
     ///
-    /// If the key does not exist the function will panic
+    /// If the key does not exist the function will panic.
     ///
     /// If you do not know if the key exists use `try_get`.
     pub fn get<S: Into<String>>(&self, key: S) -> &str {
         let key = key.into();
         self.try_get(key.as_str())
+            .unwrap_or_else(|| panic!("Key not found in captures: {}", key))
+    }
+
+    /// Attempt to get a value based on key as type.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::prelude::*;
+    /// let mut capture = Capture::new();
+    ///
+    /// capture.set("message", "0");
+    ///
+    /// println!("{:?}", capture.try_get_parse::<u8>("message"));
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// If the key does not exist the function will panic.
+    pub fn try_get_parse<T: ::std::str::FromStr>(&self, key: &str) -> Option<T>
+    where
+        T::Err: ::std::fmt::Debug
+    {
+        match self.try_get(key) {
+            Some(s) => {
+                let c = s.parse::<T>().expect(&format!("Error parsing key to type: {}", key));
+                Some(c)
+            },
+            None => None,
+        }
+    }
+
+    /// Get a value based on key as type.
+    ///
+    /// This is a wrapper around try_get_parse.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use direkuta::prelude::*;
+    /// let mut capture = Capture::new();
+    ///
+    /// capture.set("message", "0");
+    ///
+    /// println!("{}", capture.get_parse::<u8>("message"));
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// If the key does not exist the function will panic.
+    ///
+    /// If you do not know if the key exists use `try_get_parse`.
+    pub fn get_parse<T: ::std::str::FromStr>(&self, key: &str) -> T
+    where
+        T::Err: ::std::fmt::Debug
+    {
+        self.try_get_parse(key)
             .unwrap_or_else(|| panic!("Key not found in captures: {}", key))
     }
 }
@@ -1147,6 +1241,10 @@ impl Router {
                 }
             }
 
+            if cfg!(debug_assertions) {
+                captures.set("debug_pattern", re.as_str());
+            }
+
             captures
         })
     }
@@ -1390,6 +1488,12 @@ impl Response {
             .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
 
         self.set_body(html);
+    }
+
+    /// Wrapper around Response.set_body for the HTML context type.
+    pub fn with_html<T: Into<String>>(mut self, html: T) -> Self {
+        self.html(html);
+        self
     }
 
     /// Wrapper around Response.set_body for the CSS context type.
@@ -1737,6 +1841,15 @@ impl Request {
         &self.parts.headers
     }
 
+    fn headers_mut(&mut self) -> &mut HeaderMap<HeaderValue> {
+        &mut self.parts.headers
+    }
+
+    /// Returns Request parts
+    pub fn parts(&self) -> &request::Parts {
+        &self.parts
+    }
+
     /// Return Request HTTP method.
     pub fn method(&self) -> &Method {
         &self.parts.method
@@ -1822,7 +1935,7 @@ pub mod prelude {
     /// You'll need to import this if you want to use Tera templates.
     #[cfg(feature = "html")]
     pub mod html {
-        pub use tera::{Context, Tera};
+        pub use tera::{Context, Tera, Error as TeraError, ErrorKind as TeraErrorKind};
     }
 
     /// Imports the required parts from Hyper.
@@ -1831,7 +1944,7 @@ pub mod prelude {
     /// or if you want to set response Headers.
     pub mod hyper {
         pub use hyper::header::{self, HeaderMap, HeaderValue};
-        pub use hyper::Method;
+        pub use hyper::{Body, Method};
     }
 
     /// Exports Futures' 'future', 'Future', and 'Stream'.

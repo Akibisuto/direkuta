@@ -13,6 +13,7 @@ Each framework it titled along with the used commit hash.
 | **Actix**       | 55151.73       | 6.78MB         | 3.71ms    |
 | **Gotham**      | 24155.22       | 4.45MB         | 8.63ms    |
 | **Shio**        | 35017.76       | 2.97MB         | 11.38ms   |
+| **Warp**        | 71377.15       | 6.06MB         | 4.80ms    |
 
 ## Hyper (1448e4067b10da6fe4584921314afc1f5f4e3c8d)
 
@@ -109,4 +110,23 @@ Running 30s test @ http://0.0.0.0:7878/
   1053481 requests in 30.08s, 89.42MB read
 Requests/sec:  35017.76
 Transfer/sec:      2.97MB
+```
+
+## Warp (043e044fd65ebab370dcfc804949db9ac70dbf65)
+
+```console
+$ wrk -t10 -c400 -d30s http://0.0.0.0:3030/ --latency
+Running 30s test @ http://0.0.0.0:3030/
+  10 threads and 400 connections
+  Thread Stats   Avg      Stdev     Max   +/- Stdev
+    Latency     4.80ms    1.23ms  28.10ms   85.81%
+    Req/Sec     7.20k     0.95k   15.42k    83.68%
+  Latency Distribution
+     50%    4.72ms
+     75%    5.06ms
+     90%    5.76ms
+     99%    9.04ms
+  2147574 requests in 30.09s, 182.28MB read
+Requests/sec:  71377.15
+Transfer/sec:      6.06MB
 ```

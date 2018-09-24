@@ -175,7 +175,7 @@ impl Direkuta {
     ///     c.template_path("html/templates");
     /// });
     /// ```
-    pub fn config<R: Fn(&mut Config) + Send + Sync + 'static>(c: R) -> Self {
+    pub fn config(c: impl Fn(&mut Config) + Send + Sync + 'static) -> Self {
         let mut config = Config::new();
 
         c(&mut config);
@@ -258,7 +258,7 @@ impl Direkuta {
     ///     });
     /// ```
     #[inline]
-    pub fn route<R: Fn(&mut Router) + Send + Sync + 'static>(mut self, route: R) -> Self {
+    pub fn route(mut self, route: impl Fn(&mut Router) + Send + Sync + 'static) -> Self {
         let mut route_builder = Router::new();
 
         route(&mut route_builder);
@@ -372,13 +372,13 @@ impl Config {
 
     /// Set the path for templates, defaults to "templates".
     #[inline]
-    pub fn template_path<S: Into<String>>(&mut self, path: S) {
+    pub fn template_path(&mut self, path: impl Into<String>) {
         self.template_path = path.into();
     }
 
     /// Set the path for static files, defaults to "static".
     #[inline]
-    pub fn static_path<S: Into<String>>(&mut self, path: S) {
+    pub fn static_path(&mut self, path: impl Into<String>) {
         self.static_path = path.into();
     }
 }
@@ -676,7 +676,7 @@ impl Capture {
     /// capture.set("message", "Hello World!");
     /// ```
     #[inline]
-    pub fn set<K: Into<String>, V: Into<String>>(&mut self, key: K, value: V) {
+    pub fn set(&mut self, key: impl Into<String>, value: impl Into<String>) {
         let _ = self.inner.insert(key.into(), value.into());
     }
 
@@ -701,7 +701,7 @@ impl Capture {
     ///     },
     /// }
     /// ```
-    pub fn try_get<S: Into<String>>(&self, key: S) -> Option<&str> {
+    pub fn try_get(&self, key: impl Into<String>) -> Option<&str> {
         match self.inner.get(&key.into()) {
             Some(s) => Some(s.as_str()),
             None => None,
@@ -728,7 +728,7 @@ impl Capture {
     /// If the key does not exist the function will panic.
     ///
     /// If you do not know if the key exists use `try_get`.
-    pub fn get<S: Into<String>>(&self, key: S) -> &str {
+    pub fn get(&self, key: impl Into<String>) -> &str {
         let key = key.into();
         self.try_get(key.as_str())
             .unwrap_or_else(|| panic!("Key not found in captures: {}", key))
@@ -756,7 +756,8 @@ impl Capture {
     {
         match self.try_get(key) {
             Some(s) => {
-                let c = s.parse::<T>().expect(&format!("Error parsing key to type: {}", key));
+                let c = s.parse::<T>()
+                    .unwrap_or_else(|_| panic!("Error parsing key to type: {}", key));
                 Some(c)
             },
             None => None,
@@ -802,7 +803,7 @@ impl Default for Capture {
 
 type Handler =
     Fn(Request, Arc<State>, Capture)
-            -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
+            -> Box<dyn Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
         + Send
         + Sync
         + 'static;
@@ -883,18 +884,15 @@ impl Router {
     ///     GET => "txuritan"
     /// }
     /// ```
-    pub fn route<
-        S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
+    pub fn route(
+        &mut self,
+        method: Method,
+        path: impl Into<String>,
+        handler: impl Fn(Request, Arc<State>, Capture)
+                -> Box<dyn Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
-    >(
-        &mut self,
-        method: Method,
-        path: S,
-        handler: H,
     ) {
         let path = path.into();
 
@@ -949,17 +947,14 @@ impl Router {
     ///     GET => "txuritan"
     /// }
     /// ```
-    pub fn get<
-        S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
+    pub fn get(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(Request, Arc<State>, Capture)
+                -> Box<dyn Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
-    >(
-        &mut self,
-        path: S,
-        handler: H,
     ) {
         self.route(Method::GET, path, handler);
     }
@@ -985,17 +980,14 @@ impl Router {
     ///     POST => "Hello World!"
     /// }
     /// ```
-    pub fn post<
-        S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
+    pub fn post(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(Request, Arc<State>, Capture)
+                -> Box<dyn Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
-    >(
-        &mut self,
-        path: S,
-        handler: H,
     ) {
         self.route(Method::POST, path, handler);
     }
@@ -1021,17 +1013,14 @@ impl Router {
     ///     PUT => "Hello World!"
     /// }
     /// ```
-    pub fn put<
-        S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
+    pub fn put(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(Request, Arc<State>, Capture)
+                -> Box<dyn Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
-    >(
-        &mut self,
-        path: S,
-        handler: H,
     ) {
         self.route(Method::PUT, path, handler);
     }
@@ -1057,17 +1046,14 @@ impl Router {
     ///     DELETE => "Hello World!"
     /// }
     /// ```
-    pub fn delete<
-        S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
+    pub fn delete(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(Request, Arc<State>, Capture)
+                -> Box<dyn Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
-    >(
-        &mut self,
-        path: S,
-        handler: H,
     ) {
         self.route(Method::DELETE, path, handler);
     }
@@ -1093,17 +1079,14 @@ impl Router {
     ///     HEAD => "Hello World!"
     /// }
     /// ```
-    pub fn head<
-        S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
+    pub fn head(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(Request, Arc<State>, Capture)
+                -> Box<dyn Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
-    >(
-        &mut self,
-        path: S,
-        handler: H,
     ) {
         self.route(Method::HEAD, path, handler);
     }
@@ -1129,17 +1112,14 @@ impl Router {
     ///     OPTIONS => "Hello World!"
     /// }
     /// ```
-    pub fn options<
-        S: Into<String>,
-        H: Fn(Request, Arc<State>, Capture)
-                -> Box<Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
+    pub fn options(
+        &mut self,
+        path: impl Into<String>,
+        handler: impl Fn(Request, Arc<State>, Capture)
+                -> Box<dyn Future<Item = response::Response<Body>, Error = DireError> + Send + 'static>
             + Send
             + Sync
             + 'static,
-    >(
-        &mut self,
-        path: S,
-        handler: H,
     ) {
         self.route(Method::OPTIONS, path, handler);
     }
@@ -1167,10 +1147,10 @@ impl Router {
     ///     GET => "Hello World!"
     /// }
     /// ```
-    pub fn path<S: Into<String>, F: Fn(&mut Router) + Send + Sync + 'static>(
+    pub fn path(
         &mut self,
-        path: S,
-        sub: F,
+        path: impl Into<String>,
+        sub: impl Fn(&mut Router) + Send + Sync + 'static,
     ) {
         let mut builder = Router::new();
 
@@ -1427,7 +1407,7 @@ impl Response {
     /// let mut res = Response::new();
     /// res.set_body("Hello World!");
     /// ```
-    pub fn set_body<T: Into<String>>(&mut self, body: T) {
+    pub fn set_body(&mut self, body: impl Into<String>) {
         let body = body.into();
         let _ = self.headers_mut().insert(
             header::CONTENT_LENGTH,
@@ -1446,7 +1426,7 @@ impl Response {
     /// let res = Response::new()
     ///     .with_body("Hello World!");
     /// ```
-    pub fn with_body<T: Into<String>>(mut self, body: T) -> Self {
+    pub fn with_body(mut self, body: impl Into<String>) -> Self {
         self.set_body(body);
         self
     }
@@ -1483,7 +1463,7 @@ impl Response {
 
     // TODO: Change this into a builder closure, with string, file, and template functions.
     /// Wrapper around Response.set_body for the HTML context type.
-    pub fn html<T: Into<String>>(&mut self, html: T) {
+    pub fn html(&mut self, html: impl Into<String>) {
         let _ = self
             .headers_mut()
             .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/html"));
@@ -1492,13 +1472,13 @@ impl Response {
     }
 
     /// Wrapper around Response.set_body for the HTML context type.
-    pub fn with_html<T: Into<String>>(mut self, html: T) -> Self {
+    pub fn with_html(mut self, html: impl Into<String>) -> Self {
         self.html(html);
         self
     }
 
     /// Wrapper around Response.set_body for the CSS context type.
-    pub fn css<F: Fn(&mut CssBuilder)>(&mut self, css: F) {
+    pub fn css(&mut self, css: impl Fn(&mut CssBuilder)) {
         let _ = self
             .headers_mut()
             .insert(header::CONTENT_TYPE, HeaderValue::from_static("text/css"));
@@ -1511,13 +1491,13 @@ impl Response {
     }
 
     /// Wrapper around Response.set_body for the CSS context type.
-    pub fn with_css<F: Fn(&mut CssBuilder)>(mut self, css: F) -> Self {
+    pub fn with_css(mut self, css: impl Fn(&mut CssBuilder)) -> Self {
         self.css(css);
         self
     }
 
     /// Wrapper around Response.set_body for the JS context type.
-    pub fn js<F: Fn(&mut JsBuilder)>(&mut self, js: F) {
+    pub fn js(&mut self, js: impl Fn(&mut JsBuilder)) {
         let _ = self.headers_mut().insert(
             header::CONTENT_TYPE,
             HeaderValue::from_static("application/javascript"),
@@ -1531,7 +1511,7 @@ impl Response {
     }
 
     /// Wrapper around Response.set_body for the JS context type.
-    pub fn with_js<F: Fn(&mut JsBuilder)>(mut self, js: F) -> Self {
+    pub fn with_js(mut self, js: impl Fn(&mut JsBuilder)) -> Self {
         self.js(js);
         self
     }
@@ -1560,7 +1540,7 @@ impl Response {
     /// # }
     /// ```
     #[cfg(feature = "json")]
-    pub fn json<T: Serialize + Send + Sync, F: Fn(&mut JsonBuilder<T>)>(&mut self, json: F) {
+    pub fn json<T: Serialize + Send + Sync>(&mut self, json: impl Fn(&mut JsonBuilder<T>)) {
         let mut builder = JsonBuilder::new::<T>();
 
         let _ = self.headers_mut().insert(
@@ -1597,9 +1577,9 @@ impl Response {
     /// # }
     /// ```
     #[cfg(feature = "json")]
-    pub fn with_json<T: Serialize + Send + Sync, F: Fn(&mut JsonBuilder<T>)>(
+    pub fn with_json<T: Serialize + Send + Sync>(
         mut self,
-        json: F,
+        json: impl Fn(&mut JsonBuilder<T>),
     ) -> Self {
         self.json(json);
         self
@@ -1716,12 +1696,12 @@ impl<T: Serialize + Send + Sync> JsonBuilder<T> {
     }
 
     /// Added an error message to the wrapper.
-    pub fn error<S: Into<String>>(&mut self, message: S) {
+    pub fn error(&mut self, message: impl Into<String>) {
         self.wrapper.add_message(message);
     }
 
     /// Added an error message to the wrapper.
-    pub fn errors<S: Into<String>>(&mut self, messages: Vec<S>) {
+    pub fn errors(&mut self, messages: Vec<impl Into<String>>) {
         for message in messages {
             self.wrapper.add_message(message);
         }
@@ -1745,7 +1725,7 @@ impl<T: Serialize + Send + Sync> JsonBuilder<T> {
     /// Set the status string of the Json response.
     ///
     /// This can be gotten with StatusCode.as_str.
-    pub fn status<S: Into<String>>(&mut self, status: S) {
+    pub fn status(&mut self, status: impl Into<String>) {
         self.wrapper.set_status(status);
     }
 
@@ -1788,7 +1768,7 @@ impl<T: Serialize + Send + Sync> Wrapper<T> {
     }
 
     /// Add error message to response wrapper.
-    fn add_message<S: Into<String>>(&mut self, message: S) {
+    fn add_message(&mut self, message: impl Into<String>) {
         self.messages.push(message.into());
     }
 
@@ -1798,7 +1778,7 @@ impl<T: Serialize + Send + Sync> Wrapper<T> {
     }
 
     /// Set the response status string.
-    fn set_status<S: Into<String>>(&mut self, status: S) {
+    fn set_status(&mut self, status: impl Into<String>) {
         self.status = status.into();
     }
 
